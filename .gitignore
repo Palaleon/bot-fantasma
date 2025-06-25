@@ -1,0 +1,13 @@
+# Archivo de configuración con secretos. ¡NUNCA SUBIR!
+.env
+
+# Carpeta de dependencias de Node.js
+node_modules/
+
+# Archivos de log y datos generados por el bot
+*.log
+/data/
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
