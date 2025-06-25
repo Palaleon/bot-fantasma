@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import logger from '../utils/logger.js';
-import config from '../../config/index.js';
+import config from '../config/index.js';
 
 class Humanizer extends EventEmitter {
   constructor() {

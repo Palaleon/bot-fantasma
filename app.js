@@ -104,9 +104,10 @@ El bot es funcional con arquitectura multi-canal en modo compatibilidad.
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import logger from './utils/logger.js';
-import config from '../config/index.js';
+import config from './config/index.js';
 import PipReceiver from './modules/pipReceiver.js';
 import ChannelManager from './modules/ChannelManager.js';
+import { Worker } from 'worker_threads';
 import Operator from './modules/Operator.js';
 import BrokerConnector from './connectors/BrokerConnector.js';
 import TelegramConnector from './connectors/TelegramConnector.js';
@@ -128,7 +129,7 @@ class TradingBotFantasma {
     logger.info('Lanzando navegador en modo sigiloso...');
     this.browser = await puppeteer.launch({
       headless: false,
-      executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      executablePath: 'C:\\chrome-win\\chrome.exe',
       args: ['--disable-blink-features=AutomationControlled'],
     });
     this.page = (await this.browser.pages())[0];
@@ -166,10 +167,22 @@ class TradingBotFantasma {
 
     // Inicializar componentes base
     this.pipReceiver = new PipReceiver();
-    this.channelManager = new ChannelManager(); // NUEVO: Sistema de canalización
-    this.brokerConnector = new BrokerConnector(this.page);
-    this.telegramConnector = new TelegramConnector();
-    this.operator = new Operator(this.brokerConnector, this.telegramConnector);
+    // this.channelManager = new ChannelManager(); // ver2.0: Sistema de canalización
+
+// ⚡ NUEVO: Lanzar un worker por cada canal (ejemplo con 2 canales, puedes agregar más)
+this.channelWorkers = [];
+const activos = ['EURUSD', 'AUDCAD']; // Agrega más activos si quieres más canales
+
+for (const activo of activos) {
+  const worker = new Worker('./modules/ChannelWorker.js', {
+    workerData: { activo }
+  });
+  this.channelWorkers.push(worker);
+  worker.postMessage({ type: 'start' });
+}
+this.brokerConnector = new BrokerConnector(this.page);
+this.telegramConnector = new TelegramConnector();
+this.operator = new Operator(this.brokerConnector, this.telegramConnector);
     
     // Conectar el flujo: PipReceiver → ChannelManager → Operator
     this.pipReceiver.start();
@@ -191,11 +204,19 @@ class TradingBotFantasma {
     
     if (this.operator) this.operator.stop();
     if (this.channelManager) this.channelManager.stop(); // Detiene todos los canales
-    if (this.pipReceiver) this.pipReceiver.stop();
+     if (this.pipReceiver) this.pipReceiver.stop();
 
-    if (this.browser) {
-      await this.browser.close();
-    }
+     // 🚦 NUEVO: Apagar todos los workers de los canales
+     if (this.channelWorkers) {
+       for (const worker of this.channelWorkers) {
+         worker.postMessage({ type: 'stop' });
+         worker.terminate();
+       }
+     }
+
+     if (this.browser) {
+       await this.browser.close();
+     }
     
     logger.info('✅ Bot Fantasma v2.0 detenido correctamente');
   }

@@ -1,6 +1,6 @@
 import TelegramBot from 'node-telegram-bot-api';
 import logger from '../utils/logger.js';
-import config from '../../config/index.js';
+import config from '../config/index.js';
 
 class TelegramConnector {
   constructor() {
