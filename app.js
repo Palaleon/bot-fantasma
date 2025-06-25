@@ -2,11 +2,34 @@
 ================================================================================
 ||                                                                            ||
 ||           ESTADO ARQUITECTÓNICO Y PROGRESO DEL BOT FANTASMA                ||
-||                                                                            ||
+||                            VERSIÓN 2.0                                     ||
 ================================================================================
 
-Este documento sirve como un mapa viviente del proyecto. Detalla la visión
-final del sistema en producción y el estado actual de sus capacidades.
+ACTUALIZACIÓN v2.0 - SISTEMA DE CANALIZACIÓN BASE
+--------------------------------------------------------------------------------
+
+CAMBIOS IMPLEMENTADOS:
+✅ ChannelManager: Coordinador central de canales
+✅ TradingChannel: Pipeline completo por activo  
+✅ Arquitectura preparada para 10 canales paralelos
+✅ Métricas detalladas por activo
+✅ Modo compatibilidad (1 canal) y multi-canal (N canales)
+
+ARQUITECTURA ACTUAL:
+- PipReceiver → ChannelManager → TradingChannel(es) → Operator
+- Cada canal tiene su propio: IndicatorEngine + Humanizer
+- Estado completamente independiente por activo
+- Telemetría granular por canal
+
+MODO DE OPERACIÓN:
+- Por defecto: COMPATIBILIDAD (1 canal global procesa todo)
+- Multi-canal: channelManager.setMultiChannelMode(true)
+
+PRÓXIMAS FASES:
+- v2.1: Activación de 2-3 canales reales
+- v2.2: Worker Threads por canal
+- v2.3: Gestión de capital avanzada
+- v3.0: 10 canales con ML por activo
 
 --------------------------------------------------------------------------------
 VISIÓN FINAL: BOT 100% COMPLETO (ARQUITECTURA "MULTI-CANAL")
@@ -47,34 +70,34 @@ paralelo bajo un comando unificado.
     sistema y puede reiniciarse de forma segura.
 
 --------------------------------------------------------------------------------
-ESTADO ACTUAL (ARQUITECTURA "MONO-CANAL")
+ESTADO ACTUAL (v2.0 - ARQUITECTURA BASE MULTI-CANAL)
 --------------------------------------------------------------------------------
 
-El bot es funcional, pero opera como un único pipeline secuencial.
+El bot es funcional con arquitectura multi-canal en modo compatibilidad.
 
 --- CAPA 1: Recolección y Procesamiento de Datos ---
 * ✅ Conexión Robusta y Procesamiento de Flujo de Datos.
-* ✅ Constructor de Velas Multi-Activo (la base para la canalización existe).
-* ❌ Canalización Aislada y en Paralelo: No implementada.
+* ✅ Constructor de Velas Multi-Activo.
+* ✅ ChannelManager distribuye pips por activo.
+* ✅ Arquitectura lista para canalización paralela.
 
 --- CAPA 2: Análisis e Inteligencia de Señales ---
-* ✅ Motor de Indicadores (Básico): Existe un único IndicatorEngine global
-    usando una estrategia simple de EMA Crossover.
-* ✅ Humanizer (Básico): Existe un único Humanizer global con reglas de
-    frecuencia y repetición.
-* ❌ Análisis en Paralelo: No implementado.
-* ❌ Instancias Dedicadas por Canal: No implementado.
+* ✅ Motor de Indicadores por Canal (instancia independiente).
+* ✅ Humanizer por Canal (reglas independientes).
+* ✅ TradingChannel encapsula el pipeline completo.
+* ⏳ Análisis en Paralelo real (próxima versión).
 
 --- CAPA 3: Ejecución y Gestión de Capital ---
-* ✅ Operator Funcional: Implementado y operativo.
-* ✅ Conector de Bróker Funcional: Implementado y operativo.
-* ❌ Gestión de Capital Avanzada: No implementada (usa un stake fijo).
+* ✅ Operator escucha múltiples canales.
+* ✅ Conector de Bróker Funcional.
+* ✅ Señales incluyen contexto del canal.
+* ❌ Gestión de Capital Avanzada (próxima versión).
 
 --- CAPA 4: Monitoreo y Operación ---
-* ✅ Control del Navegador y Telemetría Básica por Telegram.
-* ✅ Gestión de Configuración Externa vía .env.
-* ❌ Monitoreo por Canal y Dashboard Avanzado: No implementado.
-* ❌ Sistema de Salud y Auto-reparación: No implementado.
+* ✅ Control del Navegador y Telemetría por Telegram.
+* ✅ Métricas detalladas por activo/canal.
+* ✅ Reportes periódicos del sistema multi-canal.
+* ❌ Dashboard visual (próxima versión).
 
 */
 
@@ -83,8 +106,7 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import logger from './utils/logger.js';
 import config from '../config/index.js';
 import PipReceiver from './modules/pipReceiver.js';
-import IndicatorEngine from './modules/IndicatorEngine.js';
-import Humanizer from './modules/Humanizer.js';
+import ChannelManager from './modules/ChannelManager.js';
 import Operator from './modules/Operator.js';
 import BrokerConnector from './connectors/BrokerConnector.js';
 import TelegramConnector from './connectors/TelegramConnector.js';
@@ -96,8 +118,7 @@ class TradingBotFantasma {
     this.browser = null;
     this.page = null;
     this.pipReceiver = null;
-    this.indicatorEngine = null;
-    this.humanizer = null;
+    this.channelManager = null; // NUEVO: Reemplaza indicatorEngine y humanizer
     this.operator = null;
     this.brokerConnector = null;
     this.telegramConnector = null;
@@ -137,43 +158,46 @@ class TradingBotFantasma {
 
   async start() {
     logger.info('================================================');
-    logger.info('🚀 INICIANDO BOT TRADER FANTASMA v1.8 (Doc Estratégica)');
+    logger.info('🚀 INICIANDO BOT TRADER FANTASMA v2.0 (Arquitectura Multi-Canal)');
     logger.info(`Entorno: ${config.nodeEnv}`);
     logger.info('================================================');
 
     await this.initializeBrowser();
 
+    // Inicializar componentes base
     this.pipReceiver = new PipReceiver();
-    this.indicatorEngine = new IndicatorEngine();
-    this.humanizer = new Humanizer();
+    this.channelManager = new ChannelManager(); // NUEVO: Sistema de canalización
     this.brokerConnector = new BrokerConnector(this.page);
     this.telegramConnector = new TelegramConnector();
     this.operator = new Operator(this.brokerConnector, this.telegramConnector);
     
+    // Conectar el flujo: PipReceiver → ChannelManager → Operator
     this.pipReceiver.start();
-    this.indicatorEngine.start(this.pipReceiver);
-    this.humanizer.start(this.indicatorEngine);
-    this.operator.start(this.humanizer);
+    this.channelManager.start(this.pipReceiver); // El ChannelManager se suscribe al PipReceiver
+    this.operator.start(this.channelManager); // El Operator escucha al ChannelManager
 
     logger.info('Navegando a la página del bróker para activar la intercepción...');
     await this.page.goto('https://qxbroker.com/es/trade', { waitUntil: 'networkidle2' });
     
-    logger.warn('*** ¡BOT FANTASMA TOTALMENTE OPERATIVO CON TELEMETRÍA! ***');
+    logger.warn('*** ¡BOT FANTASMA v2.0 TOTALMENTE OPERATIVO! ***');
+    logger.info('🎯 Arquitectura Multi-Canal activada en modo compatibilidad');
+    logger.info('📊 Para activar multi-canal real: channelManager.setMultiChannelMode(true)');
   }
 
   async stop() {
     logger.info('================================================');
-    logger.info('⛔ DETENIENDO BOT TRADER FANTASMA');
+    logger.info('⛔ DETENIENDO BOT TRADER FANTASMA v2.0');
     logger.info('================================================');
     
     if (this.operator) this.operator.stop();
-    if (this.humanizer) this.humanizer.stop();
-    if (this.indicatorEngine) this.indicatorEngine.stop();
+    if (this.channelManager) this.channelManager.stop(); // Detiene todos los canales
     if (this.pipReceiver) this.pipReceiver.stop();
 
     if (this.browser) {
       await this.browser.close();
     }
+    
+    logger.info('✅ Bot Fantasma v2.0 detenido correctamente');
   }
 }
 

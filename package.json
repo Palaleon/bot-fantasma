@@ -1,7 +1,7 @@
 {
   "name": "bot-fantasma",
-  "version": "1.0.0",
-  "description": "Plataforma de operación inteligente para evadir análisis algorítmico.",
+  "version": "2.0.0",
+  "description": "Plataforma de trading inteligente multi-canal con arquitectura escalable",
   "main": "src/app.js",
   "type": "module",
   "scripts": {
@@ -11,7 +11,9 @@
   "keywords": [
     "trading",
     "bot",
-    "stealth"
+    "stealth",
+    "multi-channel",
+    "scalable"
   ],
   "author": "JEFE & Analista-Programador de Élite Forense",
   "license": "UNLICENSED",

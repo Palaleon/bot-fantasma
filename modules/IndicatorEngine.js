@@ -11,6 +11,19 @@ class IndicatorEngine extends EventEmitter {
       slow: 21,
       minDataPoints: 21,
     };
+    
+    // NUEVO: Contexto del canal para logs y métricas
+    this.channelContext = 'GLOBAL';
+    this.signalCount = 0;
+  }
+  
+  /**
+   * NUEVO: Establece el contexto del canal para esta instancia
+   * Permite que cada canal tenga su propio IndicatorEngine
+   */
+  setChannelContext(channelName) {
+    this.channelContext = channelName;
+    logger.debug(`[IndicatorEngine] Contexto establecido: ${channelName}`);
   }
 
   start(pipReceiver) {
@@ -39,7 +52,7 @@ class IndicatorEngine extends EventEmitter {
     }
     
     if (state.prices.length < this.emaConfig.minDataPoints) {
-      logger.debug(`[${key}] Acumulando datos (${state.prices.length}/${this.emaConfig.minDataPoints})...`);
+      logger.debug(`[${this.channelContext}][${key}] Acumulando datos (${state.prices.length}/${this.emaConfig.minDataPoints})...`);
       return;
     }
 
@@ -73,13 +86,26 @@ class IndicatorEngine extends EventEmitter {
         candle,
       };
       
-      logger.info(`[${key}] 🎯 ¡SEÑAL TÉCNICA GENERADA! -> ${decision.toUpperCase()}`);
+      logger.info(`[${this.channelContext}][${key}] 🎯 ¡SEÑAL TÉCNICA GENERADA! -> ${decision.toUpperCase()}`);
+      this.signalCount++;
       this.emit('señalTecnica', signal);
     }
   }
 
+  /**
+   * NUEVO: Actualiza la configuración del motor dinámicamente
+   */
+  updateConfig(newConfig) {
+    if (newConfig.ema) {
+      this.emaConfig = { ...this.emaConfig, ...newConfig.ema };
+      logger.info(`[${this.channelContext}] Configuración EMA actualizada:`, this.emaConfig);
+    }
+    
+    // FUTURO: Aquí se agregarán más indicadores (RSI, Bollinger, etc.)
+  }
+
   stop() {
-    logger.info('IndicatorEngine: Detenido.');
+    logger.info(`[${this.channelContext}] IndicatorEngine: Detenido. Total señales: ${this.signalCount}`);
     this.removeAllListeners('señalTecnica');
   }
 }

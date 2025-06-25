@@ -7,6 +7,18 @@ class Humanizer extends EventEmitter {
     super();
     this.tradeHistory = [];
     this.historySize = 10;
+    
+    // NUEVO: Contexto del canal para logs y configuración específica
+    this.channelContext = 'GLOBAL';
+    this.channelConfig = null;
+  }
+  
+  /**
+   * NUEVO: Establece el contexto del canal para esta instancia
+   */
+  setChannelContext(channelName) {
+    this.channelContext = channelName;
+    logger.debug(`[Humanizer] Contexto establecido: ${channelName}`);
   }
 
   start(indicatorEngine) {
@@ -22,20 +34,20 @@ class Humanizer extends EventEmitter {
     if (this._isFrequencyViolation()) {
       const cooldown = (config.humanizer.minTradeIntervalMs / 1000).toFixed(0);
       const reason = `Violación de Frecuencia (Cooldown de ${cooldown}s no cumplido).`;
-      logger.warn(`[Humanizer] SEÑAL DENEGADA para ${asset}: ${reason}`);
+      logger.warn(`[${this.channelContext}][Humanizer] SEÑAL DENEGADA para ${asset}: ${reason}`);
       this.emit('decisionFinal', { approved: false, signal, reason });
       return;
     }
 
     if (this._isConsecutiveTradeViolation(asset, decision)) {
       const reason = `Violación de Repetición (${config.humanizer.maxConsecutiveTrades} operaciones consecutivas en ${asset} -> ${decision}).`;
-      logger.warn(`[Humanizer] SEÑAL DENEGADA para ${asset}: ${reason}`);
+      logger.warn(`[${this.channelContext}][Humanizer] SEÑAL DENEGADA para ${asset}: ${reason}`);
       this.emit('decisionFinal', { approved: false, signal, reason });
       return;
     }
 
     const reason = 'La operación mantiene un patrón impredecible.';
-    logger.info(`[Humanizer] SEÑAL APROBADA para ${asset} -> ${decision}. Motivo: ${reason}`);
+    logger.info(`[${this.channelContext}][Humanizer] SEÑAL APROBADA para ${asset} -> ${decision}. Motivo: ${reason}`);
     this.logApprovedTrade(signal);
     this.emit('decisionFinal', { approved: true, signal, reason });
   }
@@ -64,8 +76,21 @@ class Humanizer extends EventEmitter {
     return recentTrades.every(trade => trade.asset === currentAsset && trade.decision === currentDecision);
   }
 
+  /**
+   * NUEVO: Actualiza la configuración del humanizador dinámicamente
+   */
+  updateConfig(newConfig) {
+    if (newConfig.minInterval) {
+      config.humanizer.minTradeIntervalMs = newConfig.minInterval;
+    }
+    if (newConfig.maxConsecutive) {
+      config.humanizer.maxConsecutiveTrades = newConfig.maxConsecutive;
+    }
+    logger.info(`[${this.channelContext}] Configuración del Humanizer actualizada`);
+  }
+
   stop() {
-    logger.info('Humanizer: Detenido.');
+    logger.info(`[${this.channelContext}] Humanizer: Detenido.`);
   }
 }
 
