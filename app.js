@@ -2,103 +2,23 @@
 ================================================================================
 ||                                                                            ||
 ||           ESTADO ARQUITECTÓNICO Y PROGRESO DEL BOT FANTASMA                ||
-||                            VERSIÓN 2.0                                     ||
+||                            VERSIÓN 2.0 - CORREGIDO                         ||
 ================================================================================
 
-ACTUALIZACIÓN v2.0 - SISTEMA DE CANALIZACIÓN BASE
---------------------------------------------------------------------------------
-
-CAMBIOS IMPLEMENTADOS:
-✅ ChannelManager: Coordinador central de canales
-✅ TradingChannel: Pipeline completo por activo  
-✅ Arquitectura preparada para 10 canales paralelos
-✅ Métricas detalladas por activo
-✅ Modo compatibilidad (1 canal) y multi-canal (N canales)
+CORRECCIONES CRÍTICAS APLICADAS:
+✅ ChannelManager ahora está inicializado correctamente
+✅ Import de ChannelManager agregado
+✅ Workers temporalmente deshabilitados (código comentado)
+✅ Flujo de datos restaurado: PipReceiver → ChannelManager → Operator
+✅ Manejo de errores mejorado
 
 ARQUITECTURA ACTUAL:
 - PipReceiver → ChannelManager → TradingChannel(es) → Operator
-- Cada canal tiene su propio: IndicatorEngine + Humanizer
-- Estado completamente independiente por activo
-- Telemetría granular por canal
-
-MODO DE OPERACIÓN:
-- Por defecto: COMPATIBILIDAD (1 canal global procesa todo)
-- Multi-canal: channelManager.setMultiChannelMode(true)
-
-PRÓXIMAS FASES:
-- v2.1: Activación de 2-3 canales reales
-- v2.2: Worker Threads por canal
-- v2.3: Gestión de capital avanzada
-- v3.0: 10 canales con ML por activo
+- Modo compatibilidad por defecto (1 canal global)
+- Workers deshabilitados hasta corrección completa
+- Sistema funcional y estable
 
 --------------------------------------------------------------------------------
-VISIÓN FINAL: BOT 100% COMPLETO (ARQUITECTURA "MULTI-CANAL")
---------------------------------------------------------------------------------
-
-El sistema final operará como un equipo de 10 especialistas trabajando en
-paralelo bajo un comando unificado.
-
---- CAPA 1: Recolección y Procesamiento de Datos ---
-* Receptor de Flujo Masivo: Recibe y procesa pips de todos los activos del analizador.
-* Canalización por Activo: Segrega cada pip en un "canal" de procesamiento aislado
-    y dedicado para su activo correspondiente (EUR/USD, AUD/CAD, etc.).
-* Constructor de Velas por Canal: Cada canal tiene su propio constructor de velas
-    independiente para múltiples temporalidades (1m, 5m, 15m).
-
---- CAPA 2: Análisis e Inteligencia de Señales ---
-* Análisis en Paralelo: Cada canal posee su propia instancia del IndicatorEngine y
-    Humanizer, analizando los 10 activos de forma simultánea e independiente.
-* Estrategias de Confluencia: El IndicatorEngine combina múltiples indicadores
-    (EMA, RSI, Bollinger, etc.) para generar señales de alta probabilidad.
-* Humanizer por Canal: Cada Humanizer tiene su propia memoria y aplica reglas
-    de evasión avanzadas (frecuencia, repetición, diversidad, variabilidad
-    de monto y timing) de forma específica para su activo.
-
---- CAPA 3: Ejecución y Gestión de Capital ---
-* Operator Multi-Canal: Un único Operator escucha las decisiones aprobadas
-    de los 10 canales y actúa sobre la primera oportunidad válida.
-* Gestión de Capital Avanzada: Implementa estrategias configurables de
-    Martingala (por activo o global), Stop Loss/Take Profit diario y un
-    cálculo de stake dinámico basado en la confianza de la señal.
-
---- CAPA 4: Monitoreo y Operación ---
-* Telemetría Detallada por Canal: Las notificaciones de Telegram especifican
-    claramente qué activo generó una señal y su resultado.
-* Dashboard de Mando y Control: Una interfaz para visualizar el estado y
-    rendimiento de cada canal en tiempo real.
-* Sistema de Salud y Auto-reparación: Monitorea activamente los recursos del
-    sistema y puede reiniciarse de forma segura.
-
---------------------------------------------------------------------------------
-ESTADO ACTUAL (v2.0 - ARQUITECTURA BASE MULTI-CANAL)
---------------------------------------------------------------------------------
-
-El bot es funcional con arquitectura multi-canal en modo compatibilidad.
-
---- CAPA 1: Recolección y Procesamiento de Datos ---
-* ✅ Conexión Robusta y Procesamiento de Flujo de Datos.
-* ✅ Constructor de Velas Multi-Activo.
-* ✅ ChannelManager distribuye pips por activo.
-* ✅ Arquitectura lista para canalización paralela.
-
---- CAPA 2: Análisis e Inteligencia de Señales ---
-* ✅ Motor de Indicadores por Canal (instancia independiente).
-* ✅ Humanizer por Canal (reglas independientes).
-* ✅ TradingChannel encapsula el pipeline completo.
-* ⏳ Análisis en Paralelo real (próxima versión).
-
---- CAPA 3: Ejecución y Gestión de Capital ---
-* ✅ Operator escucha múltiples canales.
-* ✅ Conector de Bróker Funcional.
-* ✅ Señales incluyen contexto del canal.
-* ❌ Gestión de Capital Avanzada (próxima versión).
-
---- CAPA 4: Monitoreo y Operación ---
-* ✅ Control del Navegador y Telemetría por Telegram.
-* ✅ Métricas detalladas por activo/canal.
-* ✅ Reportes periódicos del sistema multi-canal.
-* ❌ Dashboard visual (próxima versión).
-
 */
 
 import puppeteer from 'puppeteer-extra';
@@ -106,8 +26,8 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import logger from './utils/logger.js';
 import config from './config/index.js';
 import PipReceiver from './modules/pipReceiver.js';
-import ChannelManager from './modules/ChannelManager.js';
-import { Worker } from 'worker_threads';
+import ChannelManager from './modules/ChannelManager.js';  // ✅ IMPORT RESTAURADO
+// import { Worker } from 'worker_threads';  // ❌ TEMPORALMENTE DESHABILITADO
 import Operator from './modules/Operator.js';
 import BrokerConnector from './connectors/BrokerConnector.js';
 import TelegramConnector from './connectors/TelegramConnector.js';
@@ -119,10 +39,11 @@ class TradingBotFantasma {
     this.browser = null;
     this.page = null;
     this.pipReceiver = null;
-    this.channelManager = null; // NUEVO: Reemplaza indicatorEngine y humanizer
+    this.channelManager = null;
     this.operator = null;
     this.brokerConnector = null;
     this.telegramConnector = null;
+    // this.channelWorkers = [];  // ❌ TEMPORALMENTE DESHABILITADO
   }
 
   async initializeBrowser() {
@@ -159,42 +80,63 @@ class TradingBotFantasma {
 
   async start() {
     logger.info('================================================');
-    logger.info('🚀 INICIANDO BOT TRADER FANTASMA v2.0 (Arquitectura Multi-Canal)');
+    logger.info('🚀 INICIANDO BOT TRADER FANTASMA v2.0 (CORREGIDO)');
     logger.info(`Entorno: ${config.nodeEnv}`);
     logger.info('================================================');
 
-    await this.initializeBrowser();
+    try {
+      await this.initializeBrowser();
 
-    // Inicializar componentes base
-    this.pipReceiver = new PipReceiver();
-    // this.channelManager = new ChannelManager(); // ver2.0: Sistema de canalización
+      // Inicializar componentes base
+      this.pipReceiver = new PipReceiver();
+      this.channelManager = new ChannelManager(); // ✅ AHORA SÍ ESTÁ INICIALIZADO
 
-// ⚡ NUEVO: Lanzar un worker por cada canal (ejemplo con 2 canales, puedes agregar más)
-this.channelWorkers = [];
-const activos = ['EURUSD', 'AUDCAD']; // Agrega más activos si quieres más canales
+      /* ❌ WORKERS TEMPORALMENTE DESHABILITADOS - IMPLEMENTACIÓN INCORRECTA
+      // Lanzar un worker por cada canal (ejemplo con 2 canales)
+      this.channelWorkers = [];
+      const activos = ['EURUSD', 'AUDCAD'];
 
-for (const activo of activos) {
-  const worker = new Worker('./modules/ChannelWorker.js', {
-    workerData: { activo }
-  });
-  this.channelWorkers.push(worker);
-  worker.postMessage({ type: 'start' });
-}
-this.brokerConnector = new BrokerConnector(this.page);
-this.telegramConnector = new TelegramConnector();
-this.operator = new Operator(this.brokerConnector, this.telegramConnector);
-    
-    // Conectar el flujo: PipReceiver → ChannelManager → Operator
-    this.pipReceiver.start();
-    this.channelManager.start(this.pipReceiver); // El ChannelManager se suscribe al PipReceiver
-    this.operator.start(this.channelManager); // El Operator escucha al ChannelManager
+      for (const activo of activos) {
+        try {
+          // Corrección de ruta: ./modules/ChannelWorker.js
+          const worker = new Worker('./modules/ChannelWorker.js', {
+            workerData: { activo }
+          });
+          this.channelWorkers.push(worker);
+          worker.postMessage({ type: 'start' });
+          logger.info(`Worker iniciado para activo: ${activo}`);
+        } catch (error) {
+          logger.error(`Error iniciando worker para ${activo}: ${error.message}`);
+        }
+      }
+      */
 
-    logger.info('Navegando a la página del bróker para activar la intercepción...');
-    await this.page.goto('https://qxbroker.com/es/trade', { waitUntil: 'networkidle2' });
-    
-    logger.warn('*** ¡BOT FANTASMA v2.0 TOTALMENTE OPERATIVO! ***');
-    logger.info('🎯 Arquitectura Multi-Canal activada en modo compatibilidad');
-    logger.info('📊 Para activar multi-canal real: channelManager.setMultiChannelMode(true)');
+      // Inicializar conectores
+      this.brokerConnector = new BrokerConnector(this.page);
+      this.telegramConnector = new TelegramConnector();
+      this.operator = new Operator(this.brokerConnector, this.telegramConnector);
+      
+      // ✅ FLUJO CORREGIDO: PipReceiver → ChannelManager → Operator
+      this.pipReceiver.start();
+      this.channelManager.start(this.pipReceiver); // ✅ Ahora funciona
+      this.operator.start(this.channelManager);    // ✅ Ahora funciona
+
+      logger.info('Navegando a la página del bróker para activar la intercepción...');
+      await this.page.goto('https://qxbroker.com/es/trade', { waitUntil: 'networkidle2' });
+      
+      logger.warn('*** ¡BOT FANTASMA v2.0 TOTALMENTE OPERATIVO! ***');
+      logger.info('🎯 Arquitectura Multi-Canal activada en modo compatibilidad');
+      logger.info('📊 Sistema funcionando con 1 canal global');
+      logger.info('⚠️  Workers temporalmente deshabilitados (implementación en revisión)');
+      
+      // Exponer channelManager globalmente para debugging
+      global.bot = this;
+      
+    } catch (error) {
+      logger.error(`Error fatal durante el arranque: ${error.stack}`);
+      await this.stop();
+      throw error;
+    }
   }
 
   async stop() {
@@ -202,33 +144,94 @@ this.operator = new Operator(this.brokerConnector, this.telegramConnector);
     logger.info('⛔ DETENIENDO BOT TRADER FANTASMA v2.0');
     logger.info('================================================');
     
-    if (this.operator) this.operator.stop();
-    if (this.channelManager) this.channelManager.stop(); // Detiene todos los canales
-     if (this.pipReceiver) this.pipReceiver.stop();
+    try {
+      // Detener componentes en orden inverso
+      if (this.operator) {
+        this.operator.stop();
+        logger.info('✅ Operator detenido');
+      }
+      
+      if (this.channelManager) {
+        this.channelManager.stop();
+        logger.info('✅ ChannelManager detenido');
+      }
+      
+      if (this.pipReceiver) {
+        this.pipReceiver.stop();
+        logger.info('✅ PipReceiver detenido');
+      }
 
-     // 🚦 NUEVO: Apagar todos los workers de los canales
-     if (this.channelWorkers) {
-       for (const worker of this.channelWorkers) {
-         worker.postMessage({ type: 'stop' });
-         worker.terminate();
-       }
-     }
+      /* ❌ WORKERS DESHABILITADOS
+      if (this.channelWorkers && this.channelWorkers.length > 0) {
+        for (const worker of this.channelWorkers) {
+          try {
+            worker.postMessage({ type: 'stop' });
+            await worker.terminate();
+          } catch (error) {
+            logger.error(`Error deteniendo worker: ${error.message}`);
+          }
+        }
+        logger.info('✅ Workers detenidos');
+      }
+      */
 
-     if (this.browser) {
-       await this.browser.close();
-     }
-    
-    logger.info('✅ Bot Fantasma v2.0 detenido correctamente');
+      if (this.browser) {
+        await this.browser.close();
+        logger.info('✅ Navegador cerrado');
+      }
+      
+      logger.info('✅ Bot Fantasma v2.0 detenido correctamente');
+      
+    } catch (error) {
+      logger.error(`Error durante el apagado: ${error.message}`);
+    }
+  }
+
+  // Método de utilidad para debugging
+  getSystemStatus() {
+    return {
+      pipReceiver: this.pipReceiver ? 'Activo' : 'Inactivo',
+      channelManager: this.channelManager ? 'Activo' : 'Inactivo',
+      operator: this.operator ? 'Activo' : 'Inactivo',
+      browser: this.browser ? 'Activo' : 'Inactivo',
+      channelStatus: this.channelManager ? this.channelManager.getSystemStatus() : null
+    };
   }
 }
 
+// Instancia global del bot
 const bot = new TradingBotFantasma();
+
+// Manejador mejorado de inicio
 bot.start().catch(error => {
     logger.error(`Error fatal durante el arranque: ${error.stack}`);
-    bot.stop();
+    process.exit(1);
 });
 
+// Manejadores de señales mejorados
 process.on('SIGINT', async () => {
+  logger.info('\n⌨️  Interrupción detectada (Ctrl+C)');
   await bot.stop();
   process.exit(0);
 });
+
+process.on('SIGTERM', async () => {
+  logger.info('\n🛑 Señal SIGTERM recibida');
+  await bot.stop();
+  process.exit(0);
+});
+
+process.on('uncaughtException', async (error) => {
+  logger.error(`❌ Excepción no capturada: ${error.stack}`);
+  await bot.stop();
+  process.exit(1);
+});
+
+process.on('unhandledRejection', async (reason, promise) => {
+  logger.error(`❌ Promesa rechazada no manejada: ${reason}`);
+  await bot.stop();
+  process.exit(1);
+});
+
+// Exportar para testing si es necesario
+export default bot;
