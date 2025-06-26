@@ -1,11 +1,11 @@
 {
   "name": "bot-fantasma",
-  "version": "2.0.0",
-  "description": "Plataforma de trading inteligente multi-canal con arquitectura escalable",
+  "version": "2.1.0",
+  "description": "Plataforma de trading inteligente multi-canal con interceptación WebSocket nativa",
   "main": "./app.js",
   "type": "module",
   "scripts": {
-    "start": "node /app.js",
+    "start": "node app.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -13,7 +13,8 @@
     "bot",
     "stealth",
     "multi-channel",
-    "scalable"
+    "websocket",
+    "native"
   ],
   "author": "JEFE & Analista-Programador de Élite Forense",
   "license": "UNLICENSED",
@@ -21,10 +22,13 @@
   "dependencies": {
     "dotenv": "^16.4.5",
     "node-telegram-bot-api": "^0.66.0",
-    "puppeteer": "^22.11.0",
+    "puppeteer": "^22.15.0",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
     "technicalindicators": "^3.1.0",
     "winston": "^3.13.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
