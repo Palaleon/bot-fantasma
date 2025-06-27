@@ -1,0 +1,48 @@
+# Changelog Bot Fantasma - Actualización Técnica
+
+---
+
+**Timestamp de Actualización (UTC):** 2025-06-26T19:35:00Z
+
+**Versión:** 2.1.1 (Parche de consistencia de datos y estabilidad)
+
+### Resumen Técnico
+
+Se ha resuelto una condición de carrera crítica que provocaba la saturación de canales de trading debido a la falta de normalización en los identificadores de activos (asset IDs). El problema se originaba por el uso inconsistente de `rawAsset` (ej: `EURUSD_otc`) y `displayAsset` (ej: `EUR/USD (OTC)`) a través de la cadena de procesamiento de eventos.
+
+--- 
+
+### Detalles de la Implementación
+
+**1. Módulo Afectado: `modules/pipReceiver.js`**
+
+*   **Análisis del Problema:** El manejador de eventos `_handleAssetChange` emitía un evento `assetChanged` donde el campo `new_asset` era poblado con el `displayAsset`. El `ChannelManager`, al consumir este evento, intentaba instanciar un nuevo `TradingChannel` usando este `displayAsset` como clave única. Simultáneamente, el `CandleBuilder` utilizaba el `raw_asset` del pip para la agregación de velas. Esta discrepancia de claves resultaba en la creación de múltiples canales para un único activo, agotando el pool de canales disponibles (`maxChannels: 10`).
+
+*   **Solución Implementada:** Se modificó la carga útil (payload) del evento `assetChanged` dentro de `_handleAssetChange`. El campo `new_asset` ahora se popula consistentemente con el valor de `rawAsset`.
+
+    *   **Antes (Incorrecto):**
+        ```javascript
+        this.emit('assetChanged', { new_asset: displayAsset, ... });
+        ```
+
+    *   **Después (Correcto):**
+        ```javascript
+        this.emit('assetChanged', { new_asset: rawAsset, ... });
+        ```
+
+**2. Módulo Verificado: `logic/CandleBuilder.js`**
+
+*   **Verificación:** Se confirmó que `CandleBuilder` ya operaba correctamente utilizando `raw_asset` como la clave principal para su `Map` interno (`this.activeCandles`). Este comportamiento era correcto y no requirió modificaciones. La corrección en `pipReceiver.js` alinea el `ChannelManager` con esta implementación ya existente.
+
+**3. Módulo Afectado (Error de Arranque): `app.js`**
+
+*   **Análisis del Problema:** Durante el arranque, se producía una `TypeError: Cannot read properties of undefined (reading 'setViewport')` debido a una condición de carrera en `initializeBrowser`. El código `this.page = (await this.browser.pages())[0]` fallaba si `puppeteer.connect` se establecía antes de que el navegador instanciara su primera página, resultando en un array de páginas vacío.
+
+*   **Solución Implementada:** Se añadió una lógica de sondeo y resiliencia. El código ahora verifica la longitud del array de páginas. Si está vacío, crea explícitamente una nueva página (`this.browser.newPage()`). Si no, intenta encontrar la página correcta usando la URL del broker (`config.broker.url`) como criterio de búsqueda, recurriendo a la primera página del array como fallback.
+
+### Impacto y Beneficios
+
+*   **Consistencia de Datos:** Se garantiza que `rawAsset` sea el único identificador canónico para un activo a través de todo el flujo de datos (Pip-to-Signal).
+*   **Prevención de Errores de Lógica:** Se elimina la causa raíz de la creación de canales duplicados, resolviendo el error de `Límite de canales alcanzado`.
+*   **Optimización de Recursos:** Se previene la instanciación superflua de objetos `TradingChannel`, lo que reduce la sobrecarga de memoria (heap) y el tiempo de procesamiento de la CPU.
+*   **Robustez del Arranque:** El bot ahora es resiliente a condiciones de carrera durante la inicialización con el navegador, previniendo fallos fatales al inicio.

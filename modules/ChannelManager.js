@@ -30,10 +30,10 @@ class ChannelManager extends EventEmitter {
     
     // Configuración del sistema
     this.config = {
-      // Fase 1A: modo compatibilidad (un solo canal global)
-      compatibilityMode: true,
+      // Modo Multi-Canal activado por defecto
+      compatibilityMode: false,
       maxChannels: 10,
-      defaultChannel: 'GLOBAL', // Canal único en modo compatibilidad
+      defaultChannel: 'GLOBAL', // Usado como fallback o para modos específicos
     };
     
     // Métricas globales del sistema

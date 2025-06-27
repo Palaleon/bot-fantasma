@@ -128,7 +128,7 @@ class PipReceiver extends EventEmitter {
       // Emitir evento de cambio de activo
       this.emit('assetChanged', {
         previous_asset: previousAsset,
-        new_asset: displayAsset,
+        new_asset: rawAsset, // <-- CORRECCIÓN: Usar siempre el rawAsset como identificador
         raw_asset: rawAsset,
         timestamp: Date.now()
       });

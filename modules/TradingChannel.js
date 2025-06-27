@@ -78,8 +78,7 @@ class TradingChannel extends EventEmitter {
     // El CandleBuilder global ya maneja las velas, solo procesamos las cerradas
     
     // 2. Motor de indicadores - PROPIO del canal
-    this.indicatorEngine = new IndicatorEngine();
-    this.indicatorEngine.setChannelContext(this.asset); // Método nuevo para contexto
+    this.indicatorEngine = new IndicatorEngine(this.asset);
     
     // 3. Humanizador - PROPIO del canal
     this.humanizer = new Humanizer();

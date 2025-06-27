@@ -48,20 +48,40 @@ class TradingBotFantasma {
 
   async initializeBrowser() {
     logger.info('Conectando a navegador existente en modo sigiloso...');
-    this.browser = await puppeteer.connect({
-      browserURL: 'http://127.0.0.1:9222',
-      defaultViewport: null
-    });
-    
-    this.page = (await this.browser.pages())[0];
+
+    const maxRetries = 5;
+    const retryDelay = 2000; // 2 segundos
+
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        this.browser = await puppeteer.connect({
+          browserURL: 'http://127.0.0.1:9222',
+          defaultViewport: null
+        });
+        logger.info('✅ Conexión con el navegador establecida con éxito.');
+        break; // Salir del bucle si la conexión es exitosa
+      } catch (error) {
+        logger.warn(`Intento de conexión ${i + 1}/${maxRetries} fallido. Reintentando en ${retryDelay / 1000}s...`);
+        if (i === maxRetries - 1) {
+          logger.error('No se pudo conectar al navegador después de varios intentos. Asegúrate de que Chrome esté corriendo en modo de depuración en el puerto 9222.');
+          throw error; // Lanzar el error final si todos los intentos fallan
+        }
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+      }
+    }
+
+    let pages = await this.browser.pages();
+    if (pages.length === 0) {
+      logger.warn('No se encontraron páginas abiertas. Creando una nueva página...');
+      this.page = await this.browser.newPage();
+    } else {
+      // Intentar encontrar la página del broker por la URL, si no, usar la primera
+      this.page = pages.find(p => p.url().includes(config.broker.url)) || pages[0];
+      logger.info(`Encontradas ${pages.length} páginas. Usando página con URL: ${this.page.url()}`);
+    }
     await this.page.setViewport({ width: 1280, height: 800 });
-    
-    // Preparar la página para interceptación WebSocket nativa
+
     logger.info('🎤 Preparando interceptación WebSocket nativa...');
-    
-    // Ya no necesitamos exponer funciones para el analizador Python
-    // El WebSocketInterceptor manejará todo internamente
-    
     logger.info('Navegador listo para interceptación nativa.');
   }
 
