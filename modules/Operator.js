@@ -7,20 +7,6 @@ class Operator {
     this.telegramConnector = telegramConnector;
   }
 
-  /**
-   * ACTUALIZADO: Ahora escucha señales del ChannelManager (multi-canal)
-   * En lugar de escuchar directamente al Humanizer, escucha al sistema central
-   */
-  start(channelManager) {
-    logger.info('Operator: En línea. Esperando órdenes de ejecución aprobadas del sistema multi-canal.');
-    
-    // CAMBIO CRÍTICO: Escuchar señales multi-canal del ChannelManager
-    channelManager.on('señalMultiCanal', (signal) => {
-      logger.info(`Operator: Señal recibida del canal [${signal.channel}]`);
-      this.executeApprovedTrade(signal);
-    });
-  }
-
   async executeApprovedTrade(signal) {
     const { asset, decision, channel, executionParams } = signal;
     const { delayMs, investment } = executionParams;

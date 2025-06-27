@@ -4,7 +4,9 @@
 import { Command } from 'commander';
 import fs from 'fs';
 import path from 'path';
-import { loadState } from './utils/StateManager.js';
+import { loadState, saveState } from './utils/StateManager.js';
+import Humanizer from './modules/Humanizer.js';
+import logger from './utils/logger.js';
 
 const program = new Command();
 
@@ -198,13 +200,53 @@ program
   .description('Simular resultados de trades para testing')
   .option('-w, --wins <number>', 'Número de victorias', '5')
   .option('-l, --losses <number>', 'Número de derrotas', '3')
-  .action((options) => {
-    console.log('⚠️  Esta función está destinada solo para pruebas.');
-    console.log(`Simulando ${options.wins} victorias y ${options.losses} derrotas...`);
-    
-    // Aquí podrías agregar la lógica para simular trades
-    console.log('ℹ️  Función no implementada completamente.');
-    console.log('Usa test-optimization.js para pruebas completas.');
+  .action(async (options) => {
+    logger.warn('⚠️  Esta función está destinada solo para pruebas y modificará el estado actual (`trading_persona.json`).');
+    const wins = parseInt(options.wins);
+    const losses = parseInt(options.losses);
+    logger.info(`Simulando ${wins} victorias y ${losses} derrotas...`);
+
+    // ¡CLAVE! Usamos un archivo de estado separado para la simulación.
+    const simStateFile = path.join(process.cwd(), 'trading_persona_sim.json');
+    logger.info(`Usando archivo de estado de simulación: ${simStateFile}`);
+
+    // Instanciamos el Humanizer apuntando al archivo de simulación.
+    const humanizer = new Humanizer(simStateFile);
+
+    const simulateTrade = (result, index) => {
+      const tradeId = `sim-${Date.now()}-${Math.random()}`;
+      const isWin = result === 'win';
+      // Alternamos entre dos activos para probar el análisis por activo
+      const asset = index % 2 === 0 ? 'EURUSD_sim' : 'GBPUSD_sim';
+
+      // 1. Registramos la operación como si el Humanizer la hubiera aprobado y estuviera pendiente.
+      // Esto es CRUCIAL para que el Humanizer tenga el contexto de qué decisión llevó al resultado.
+      humanizer.pendingTrades.set(tradeId, {
+        signal: { asset: asset, decision: 'green' }, // Simulación simple de una señal
+        confidence: Math.random() * (0.9 - 0.6) + 0.6, // Confianza aleatoria pero realista
+        timestamp: Date.now(),
+        personality: humanizer.getPersonalityState() // Captura el estado emocional en el momento de la "decisión"
+      });
+
+      // 2. Procesamos el resultado de esa operación pendiente.
+      humanizer.processTradeResult({
+        id: tradeId,
+        profit: isWin ? 0.85 : -1, // Resultado monetario
+        asset: asset
+      });
+      logger.info(`-> Trade simulado #${index + 1}: ${asset} -> ${result.toUpperCase()}`);
+    };
+
+    const totalTrades = wins + losses;
+    for (let i = 0; i < totalTrades; i++) {
+      // Mezclamos victorias y derrotas
+      const result = i < wins ? 'win' : 'loss';
+      simulateTrade(result, i);
+    }
+
+    // Guardamos el estado en el archivo de simulación.
+    saveState(humanizer.state, simStateFile);
+    logger.info('✅ Simulación completada. El nuevo estado del Humanizer ha sido guardado.');
   });
 
 program.parse();

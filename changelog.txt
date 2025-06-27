@@ -46,3 +46,99 @@ Se ha resuelto una condición de carrera crítica que provocaba la saturación d
 *   **Prevención de Errores de Lógica:** Se elimina la causa raíz de la creación de canales duplicados, resolviendo el error de `Límite de canales alcanzado`.
 *   **Optimización de Recursos:** Se previene la instanciación superflua de objetos `TradingChannel`, lo que reduce la sobrecarga de memoria (heap) y el tiempo de procesamiento de la CPU.
 *   **Robustez del Arranque:** El bot ahora es resiliente a condiciones de carrera durante la inicialización con el navegador, previniendo fallos fatales al inicio.
+
+# Changelog Bot Fantasma - Actualización de Arquitectura y Simulación (BETA)
+
+---
+
+**Timestamp de Actualización (UTC):** 2025-07-27T14:22:00Z
+
+**Versión:** 3.0.0-beta (BETA - Arquitectura de Workers y Simulación de Aprendizaje)
+
+**IMPORTANTE: Esta actualización introduce cambios significativos en la arquitectura y una nueva función de simulación. Se considera una versión BETA y pueden existir mejoras o correcciones.**
+
+### Resumen Técnico
+
+Se ha refactorizado la arquitectura principal del bot para utilizar `Worker Threads` de Node.js, mejorando el rendimiento y la estabilidad. Además, se ha implementado un comando de simulación (`simulate`) para pruebas de auto-optimización aisladas.
+
+--- 
+
+### Detalles de la Implementación
+
+**1. Introducción de Workers para Procesamiento Paralelo**
+
+*   **Módulo:** `app.js`
+*   **Cambios:**
+    *   Se instancian dos `Worker Threads`: `pip-worker.js` y `analysis-worker.js`.
+    *   El procesamiento intensivo de pips (construcción de velas) se delega a `pip-worker.js`.
+    *   El análisis técnico (indicadores) y la generación de señales se delegan a `analysis-worker.js`.
+    *   La comunicación entre el hilo principal y los workers se realiza mediante paso de mensajes.
+*   **Beneficios:**
+    *   **Mejora de Rendimiento:** El hilo principal ya no se bloquea por tareas intensivas, mejorando la capacidad de respuesta del bot.
+    *   **Escalabilidad:** La arquitectura ahora es más adecuada para manejar múltiples activos simultáneamente.
+
+**2. Implementación de `pip-worker.js`**
+
+*   **Ubicación:** `logic/pip-worker.js`
+*   **Funcionalidad:**
+    *   Recibe pips del hilo principal.
+    *   Utiliza `CandleBuilder` para construir velas en diferentes temporalidades.
+    *   Envía las velas completas al `analysis-worker.js`.
+
+**3. Implementación de `analysis-worker.js`**
+
+*   **Ubicación:** `logic/analysis-worker.js`
+*   **Funcionalidad:**
+    *   Recibe velas completas del `pip-worker.js`.
+    *   Utiliza `ChannelManager` para realizar el análisis técnico y generar señales.
+    *   Envía las señales finales al hilo principal para su ejecución.
+
+**4. Comando `simulate` para Pruebas Aisladas**
+
+*   **Módulo:** `bot_cli.js`
+*   **Funcionalidad:**
+    *   Permite simular operaciones (victorias/derrotas) para probar el sistema de auto-optimización del `Humanizer`.
+    *   Utiliza un archivo de estado separado (`trading_persona_sim.json`) para evitar la contaminación del estado real del bot.
+    *   El `Humanizer` procesa los resultados simulados y actualiza su estado en el archivo de simulación.
+*   **Uso:**
+    ```bash
+    node bot_cli.js simulate --wins 10 --losses 5
+    ```
+
+**5. Gestión de Estado Mejorada**
+
+*   **Módulo:** `utils/StateManager.js`
+*   **Cambios:**
+    *   Las funciones `saveState` y `loadState` ahora aceptan un parámetro opcional `filePath` para especificar el archivo de estado.
+    *   Esto permite que el comando `simulate` utilice un archivo de estado aislado.
+*   **Módulo:** `modules/Humanizer.js`
+*   **Cambios:**
+    *   El constructor ahora puede recibir un parámetro `stateFilePath` para cargar el estado desde un archivo específico.
+    *   Se actualiza la lógica de guardado para utilizar la ruta correcta.
+
+**6. Correcciones de Errores y Mejoras de Robustez**
+
+*   **Módulo:** `app.js`
+*   **Correcciones:**
+    *   Implementación correcta del cierre de workers en el método `stop`.
+    *   Corrección de la ruta al `Humanizer` en el manejador de `SIGINT` para asegurar el guardado del estado al cerrar con `Ctrl+C`.
+*   **Módulo:** `modules/Operator.js`
+*   **Cambios:**
+    *   Eliminación del método `start` obsoleto.
+
+**7. Otros Cambios**
+
+*   **Módulo:** `app.js`
+*   **Cambios:**
+    *   Corrección de la llamada al método del `Operator` en `analysisWorker.on('message')` (de `handleSignal` a `executeApprovedTrade`).
+
+### Impacto y Beneficios
+
+*   **Mejora Significativa del Rendimiento:** El uso de workers permite un procesamiento más eficiente de los datos del mercado y del análisis técnico.
+*   **Mayor Estabilidad:** La separación de tareas reduce el riesgo de bloqueos y mejora la robustez general del bot.
+*   **Pruebas Aisladas:** El comando `simulate` permite probar y ajustar el sistema de auto-optimización sin afectar el funcionamiento del bot en vivo.
+*   **Arquitectura Escalable:** La base para futuras mejoras y la capacidad de manejar múltiples activos simultáneamente se ha fortalecido.
+
+**Notas Adicionales:**
+*   Esta actualización se considera una versión **BETA**. Se anima a los usuarios a probar exhaustivamente la nueva funcionalidad y reportar cualquier problema.
+*   Se esperan mejoras y correcciones en futuras versiones, incluyendo la posible expansión de la funcionalidad del comando `simulate` y optimizaciones adicionales en la gestión de workers.
