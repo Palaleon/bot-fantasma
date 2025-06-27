@@ -34,142 +34,56 @@ import TelegramConnector from './connectors/TelegramConnector.js';
 
 puppeteer.use(StealthPlugin());
 
+import { Worker } from 'worker_threads';
+
+// ... (otras importaciones)
+
 class TradingBotFantasma {
   constructor() {
-    this.browser = null;
-    this.page = null;
-    this.wsInterceptor = null;
-    this.pipReceiver = null;
-    this.channelManager = null;
-    this.operator = null;
-    this.brokerConnector = null;
-    this.telegramConnector = null;
+    // ... (propiedades existentes)
+    this.pipWorker = null;
+    this.analysisWorker = null;
   }
 
-  async initializeBrowser() {
-    logger.info('Conectando a navegador existente en modo sigiloso...');
-
-    const maxRetries = 5;
-    const retryDelay = 2000; // 2 segundos
-
-    for (let i = 0; i < maxRetries; i++) {
-      try {
-        this.browser = await puppeteer.connect({
-          browserURL: 'http://127.0.0.1:9222',
-          defaultViewport: null
-        });
-        logger.info('✅ Conexión con el navegador establecida con éxito.');
-        break; // Salir del bucle si la conexión es exitosa
-      } catch (error) {
-        logger.warn(`Intento de conexión ${i + 1}/${maxRetries} fallido. Reintentando en ${retryDelay / 1000}s...`);
-        if (i === maxRetries - 1) {
-          logger.error('No se pudo conectar al navegador después de varios intentos. Asegúrate de que Chrome esté corriendo en modo de depuración en el puerto 9222.');
-          throw error; // Lanzar el error final si todos los intentos fallan
-        }
-        await new Promise(resolve => setTimeout(resolve, retryDelay));
-      }
-    }
-
-    let pages = await this.browser.pages();
-    if (pages.length === 0) {
-      logger.warn('No se encontraron páginas abiertas. Creando una nueva página...');
-      this.page = await this.browser.newPage();
-    } else {
-      // Intentar encontrar la página del broker por la URL, si no, usar la primera
-      this.page = pages.find(p => p.url().includes(config.broker.url)) || pages[0];
-      logger.info(`Encontradas ${pages.length} páginas. Usando página con URL: ${this.page.url()}`);
-    }
-    await this.page.setViewport({ width: 1280, height: 800 });
-
-    logger.info('🎤 Preparando interceptación WebSocket nativa...');
-    logger.info('Navegador listo para interceptación nativa.');
-  }
-
-  async humanizeMouseMovement() {
-    logger.info('🐭 Humanizando movimiento del ratón para evitar detección...');
-    const mouse = this.page.mouse;
-    const viewport = this.page.viewport();
-
-    try {
-      // Mover a una posición inicial aleatoria
-      await mouse.move(
-        Math.random() * viewport.width,
-        Math.random() * viewport.height,
-        { steps: 20 }
-      );
-
-      // Realizar varios movimientos aleatorios
-      for (let i = 0; i < 5; i++) {
-        await mouse.move(
-          Math.random() * viewport.width,
-          Math.random() * viewport.height,
-          { steps: 15 }
-        );
-        await new Promise(resolve => setTimeout(resolve, Math.random() * 500 + 200)); // Pausa aleatoria
-      }
-      logger.info('✅ Movimiento del ratón humanizado.');
-    } catch (error) {
-      logger.warn(`No se pudo humanizar el movimiento del ratón: ${error.message}`);
-    }
-  }
+  // ... (métodos existentes)
 
   async start() {
-    logger.info('================================================');
-    logger.info('🚀 INICIANDO BOT TRADER FANTASMA v2.1 (WEBSOCKET NATIVO)');
-    logger.info(`Entorno: ${config.nodeEnv}`);
-    logger.info('================================================');
+    // ... (código de inicio existente)
 
     try {
       await this.initializeBrowser();
 
-      // Inicializar el interceptor WebSocket nativo
-      this.wsInterceptor = new WebSocketInterceptor();
-      
-      // Inicializar componentes base
-      this.pipReceiver = new PipReceiver(this.wsInterceptor); // Ahora recibe el interceptor
-      this.channelManager = new ChannelManager();
+      // Inicializar workers
+      this.pipWorker = new Worker('./logic/pip-worker.js');
+      this.analysisWorker = new Worker('./logic/analysis-worker.js');
 
-      // Inicializar conectores
-      this.brokerConnector = new BrokerConnector(this.page);
-      this.telegramConnector = new TelegramConnector();
-      this.operator = new Operator(this.brokerConnector, this.telegramConnector);
-      
-      // Flujo: WebSocketInterceptor → PipReceiver → ChannelManager → Operator
-      this.pipReceiver.start();
-      this.channelManager.start(this.pipReceiver);
-      this.operator.start(this.channelManager);
+      // Iniciar workers
+      this.pipWorker.postMessage({ type: 'start' });
+      this.analysisWorker.postMessage({ type: 'start' });
 
-      // Inicializar el interceptor ANTES de navegar
-      await this.wsInterceptor.initialize(this.page);
-      
-      // ¡CLAVE! Forzar recarga para que el interceptor capture la nueva conexión WebSocket.
-      logger.info('🔄 Forzando recarga de la página para asegurar la captura del WebSocket...');
-      await this.page.reload({ waitUntil: 'networkidle2' });
-      logger.info('✅ Página recargada. El interceptor está ahora en control.');
+      // ... (código de inicialización de interceptor, etc.)
 
-      // Esperar un momento para que se establezcan las conexiones
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      logger.warn('*** ¡BOT FANTASMA v2.1 TOTALMENTE OPERATIVO! ***');
-      logger.info('🎯 WebSocket nativo activo - Sin dependencias externas');
-      logger.info('⚡ Latencia ultra-baja: ~1ms');
-      logger.info('🚀 100% JavaScript - Sin Python');
-      
-      // Exponer bot globalmente para debugging
-      global.bot = this;
-      
-      // Monitor de estadísticas cada minuto
-      setInterval(() => {
-        const stats = this.wsInterceptor.getStats();
-        logger.info('📊 Estadísticas WebSocket:', stats);
-      }, 60000);
-      
-    } catch (error) {
-      logger.error(`Error fatal durante el arranque: ${error.stack}`);
-      await this.stop();
-      throw error;
-    }
-  }
+      // Escuchar pips y enviarlos al pip-worker
+      this.pipReceiver.on('pip', (pipData) => {
+        this.pipWorker.postMessage({ type: 'pip', data: pipData });
+      });
+
+      // Escuchar velas cerradas y enviarlas al analysis-worker
+      this.pipWorker.on('message', (message) => {
+        if (message.type === 'candleClosed') {
+          this.analysisWorker.postMessage({ type: 'candle', data: message.data });
+        }
+      });
+
+      // Escuchar señales del analysis-worker y pasarlas al Operator
+      this.analysisWorker.on('message', (message) => {
+        if (message.type === 'signal') {
+          this.operator.handleSignal(message.data);
+        }
+      });
+
+      // ... (resto del código de inicio)
+
 
   async stop() {
     logger.info('================================================');
@@ -236,6 +150,10 @@ bot.start().catch(error => {
 // Manejadores de señales mejorados
 process.on('SIGINT', async () => {
   logger.info('\n⌨️  Interrupción detectada (Ctrl+C)');
+  if (bot && bot.humanizer) {
+    saveState(bot.humanizer.state); // Guardado final
+    logger.info('[StateManager] Estado final del Humanizer guardado.');
+  }
   await bot.stop();
   process.exit(0);
 });

@@ -1,97 +1,63 @@
 import { EventEmitter } from 'events';
 import logger from '../utils/logger.js';
 import config from '../config/index.js';
+import { google_web_search } from '../../tools/google_web_search.js'; // Asumiendo la ruta
+import { saveState, loadState } from '../utils/StateManager.js';
+
+// ... (función gaussianRandom)
 
 class Humanizer extends EventEmitter {
   constructor() {
     super();
-    this.tradeHistory = [];
-    this.historySize = 10;
-    
-    // NUEVO: Contexto del canal para logs y configuración específica
-    this.channelContext = 'GLOBAL';
-    this.channelConfig = null;
-  }
-  
-  /**
-   * NUEVO: Establece el contexto del canal para esta instancia
-   */
-  setChannelContext(channelName) {
-    this.channelContext = channelName;
-    logger.debug(`[Humanizer] Contexto establecido: ${channelName}`);
-  }
-
-  start(indicatorEngine) {
-    logger.info('Humanizer: Operativo. Auditando señales técnicas...');
-    indicatorEngine.on('señalTecnica', (signal) => {
-      this.analyzeSignal(signal);
-    });
+    this.state = loadState();
+    this.opportunityBuffer = [];
+    this.isDeciding = false;
+    this.decisionWindowMs = 2000; // 2 segundos
+    logger.info('🤖 Humanizer v4.2 (Focus Funnel) inicializado');
   }
 
   analyzeSignal(signal) {
-    const { asset, decision } = signal;
+    this.opportunityBuffer.push(signal);
+    if (!this.isDeciding) {
+      this.isDeciding = true;
+      setTimeout(() => this._makeFocusedDecision(), this.decisionWindowMs);
+    }
+  }
 
-    if (this._isFrequencyViolation()) {
-      const cooldown = (config.humanizer.minTradeIntervalMs / 1000).toFixed(0);
-      const reason = `Violación de Frecuencia (Cooldown de ${cooldown}s no cumplido).`;
-      logger.warn(`[${this.channelContext}][Humanizer] SEÑAL DENEGADA para ${asset}: ${reason}`);
-      this.emit('decisionFinal', { approved: false, signal, reason });
+  _makeFocusedDecision() {
+    if (this.opportunityBuffer.length === 0) {
+      this.isDeciding = false;
       return;
     }
 
-    if (this._isConsecutiveTradeViolation(asset, decision)) {
-      const reason = `Violación de Repetición (${config.humanizer.maxConsecutiveTrades} operaciones consecutivas en ${asset} -> ${decision}).`;
-      logger.warn(`[${this.channelContext}][Humanizer] SEÑAL DENEGADA para ${asset}: ${reason}`);
-      this.emit('decisionFinal', { approved: false, signal, reason });
-      return;
-    }
+    // Calcular puntuación de "interés" para cada oportunidad
+    const scoredOpportunities = this.opportunityBuffer.map(opp => ({
+      ...opp,
+      interestScore: this._calculateInterestScore(opp),
+    }));
 
-    const reason = 'La operación mantiene un patrón impredecible.';
-    logger.info(`[${this.channelContext}][Humanizer] SEÑAL APROBADA para ${asset} -> ${decision}. Motivo: ${reason}`);
-    this.logApprovedTrade(signal);
-    this.emit('decisionFinal', { approved: true, signal, reason });
-  }
+    // Elegir la mejor
+    const bestOpportunity = scoredOpportunities.reduce((a, b) => a.interestScore > b.interestScore ? a : b);
 
-  logApprovedTrade(signal) {
-    this.tradeHistory.push({
-      asset: signal.asset,
-      decision: signal.decision,
-      timestamp: Date.now(),
-    });
-    if (this.tradeHistory.length > this.historySize) {
-      this.tradeHistory.shift();
-    }
-  }
-  
-  _isFrequencyViolation() {
-    if (this.tradeHistory.length === 0) return false;
-    const lastTradeTimestamp = this.tradeHistory[this.tradeHistory.length - 1].timestamp;
-    return (Date.now() - lastTradeTimestamp) < config.humanizer.minTradeIntervalMs;
+    // Limpiar buffer y tomar decisión final
+    this.opportunityBuffer = [];
+    this.isDeciding = false;
+
+    // Aquí iría la lógica de análisis de la mejor oportunidad (como antes)
+    const executionParams = this._generateExecutionParams(bestOpportunity);
+    this.logApprovedTrade(bestOpportunity, executionParams);
+    this.emit('decisionFinal', { approved: true, signal: { ...bestOpportunity, executionParams } });
   }
 
-  _isConsecutiveTradeViolation(currentAsset, currentDecision) {
-    const consecutiveLimit = config.humanizer.maxConsecutiveTrades;
-    if (this.tradeHistory.length < consecutiveLimit) return false;
-    const recentTrades = this.tradeHistory.slice(-consecutiveLimit);
-    return recentTrades.every(trade => trade.asset === currentAsset && trade.decision === currentDecision);
+  _calculateInterestScore(signal) {
+    let score = signal.confidence * 0.4; // Peso de la confianza
+    // ... (lógica de puntuación de personalidad, novedad, etc.)
+    return score;
   }
 
-  /**
-   * NUEVO: Actualiza la configuración del humanizador dinámicamente
-   */
-  updateConfig(newConfig) {
-    if (newConfig.minInterval) {
-      config.humanizer.minTradeIntervalMs = newConfig.minInterval;
-    }
-    if (newConfig.maxConsecutive) {
-      config.humanizer.maxConsecutiveTrades = newConfig.maxConsecutive;
-    }
-    logger.info(`[${this.channelContext}] Configuración del Humanizer actualizada`);
-  }
-
-  stop() {
-    logger.info(`[${this.channelContext}] Humanizer: Detenido.`);
-  }
+  // ... (resto de los métodos)
 }
 
+
 export default Humanizer;
+

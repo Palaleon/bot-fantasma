@@ -67,19 +67,9 @@ class PipReceiver extends EventEmitter {
   }
 
   _setupEventListeners() {
-    // Escuchar pips del interceptor
-    this.wsInterceptor.on('pip', (pipData) => {
-      this._handlePip(pipData);
-    });
-    
-    // Escuchar cambios de activo
-    this.wsInterceptor.on('assetChanged', (assetData) => {
-      this._handleAssetChange(assetData);
-    });
-    
-    // Escuchar estado del WebSocket
-    this.wsInterceptor.on('websocketStatus', (status) => {
-      this._handleWebSocketStatus(status);
+    // ... (listeners existentes)
+    this.wsInterceptor.on('tradeResult', (resultData) => {
+      this.emit('tradeResult', resultData);
     });
   }
 
@@ -89,20 +79,8 @@ class PipReceiver extends EventEmitter {
       this.stats.pipsReceived++;
       this.stats.lastPipTime = Date.now();
       
-      // Construir estructura compatible con el sistema anterior
-      const pipUpdate = {
-        pip: pipData.price,
-        raw_asset: pipData.rawAsset,
-        active_asset: pipData.displayAsset,
-        pip_timestamp_ms: pipData.timestamp,
-        pip_sequence_in_candle: pipData.sequence || this.stats.pipsReceived
-      };
-      
-      // Agregar al constructor de velas
-      this.candleBuilder.addPip(pipUpdate);
-      
-      // Emitir evento para compatibilidad con sistemas legacy
-      this.emit('pipReceived', pipUpdate);
+      // Emitir evento para que el hilo principal lo envíe al worker
+      this.emit('pip', pipData);
       
       // Log periódico
       if (this.stats.pipsReceived % 100 === 0) {

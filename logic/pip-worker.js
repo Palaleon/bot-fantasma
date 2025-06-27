@@ -1,0 +1,19 @@
+import { parentPort } from 'worker_threads';
+import CandleBuilder from './CandleBuilder.js';
+
+let candleBuilder;
+
+parentPort.on('message', (message) => {
+  const { type, data } = message;
+
+  if (type === 'start') {
+    candleBuilder = new CandleBuilder((closedCandle) => {
+      parentPort.postMessage({ type: 'candleClosed', data: closedCandle });
+    });
+    parentPort.postMessage({ type: 'started' });
+  } else if (type === 'pip') {
+    if (candleBuilder) {
+      candleBuilder.addPip(data);
+    }
+  }
+});

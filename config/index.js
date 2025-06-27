@@ -29,6 +29,10 @@ const config = {
   humanizer: {
     maxConsecutiveTrades: parseInt(process.env.HUMANIZER_MAX_CONSECUTIVE_TRADES, 10) || 2,
     minTradeIntervalMs: (parseInt(process.env.HUMANIZER_MIN_TRADE_INTERVAL_S, 10) || 60) * 1000,
+    delay: {
+      meanMs: parseInt(process.env.HUMANIZER_DELAY_MEAN_MS, 10) || 2500,
+      stdDevMs: parseInt(process.env.HUMANIZER_DELAY_STDDEV_MS, 10) || 1000,
+    },
   },
 
   // Configuración de trading

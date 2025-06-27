@@ -22,25 +22,26 @@ class Operator {
   }
 
   async executeApprovedTrade(signal) {
-    const { asset, decision, channel } = signal;
-    const action = decision === 'green' ? 'call' : 'put';
-    const stake = config.trading.baseStake;
-    
-    // NUEVO: Incluir información del canal en los logs
-    const logMessage = `OPERATOR: ¡ORDEN DE FUEGO! Canal [${channel || 'GLOBAL'}] ejecutando ${action.toUpperCase()} en ${asset} por $${stake}`;
-    logger.warn(logMessage);
+    const { asset, decision, channel, executionParams } = signal;
+    const { delayMs, investment } = executionParams;
 
-    // NUEVO: Incluir métricas del canal en la notificación
-    const channelInfo = signal.channelMetrics 
-      ? `\nCanal: *${channel}*\nSeñales del canal: ${signal.channelMetrics.signalsGenerated}`
-      : '';
+    const action = decision === 'green' ? 'call' : 'put';
     
-    const telegramMessage = `🚀 *ORDEN ENVIADA*\n\nActivo: *${asset.replace('_', '\\_')}*\nDirección: *${action.toUpperCase()}*\nMonto: *$${stake}*${channelInfo}`;
+    const logMessage = `OPERATOR: Orden recibida para ${asset}. Esperando ${delayMs}ms para ejecución humanizada...`;
+    logger.info(logMessage);
+
+    // Esperar el retraso dinámico
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+
+    const finalLogMessage = `OPERATOR: ¡ORDEN DE FUEGO! Canal [${channel || 'GLOBAL'}] ejecutando ${action.toUpperCase()} en ${asset} por ${investment}`;
+    logger.warn(finalLogMessage);
+
+    const telegramMessage = `🚀 *ORDEN ENVIADA*\n\nActivo: *${asset.replace('_', '\_')}*\nDirección: *${action.toUpperCase()}*\nMonto: *${investment}*`;
     await this.telegramConnector.sendMessage(telegramMessage);
 
     this.brokerConnector.executeTrade({
       asset: asset,
-      amount: stake,
+      amount: investment,
       action: action,
       time: 5,
     });
