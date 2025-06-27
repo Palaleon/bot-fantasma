@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import logger from '../utils/logger.js';
 import config from '../config/index.js';
-import { google_web_search } from '../../tools/google_web_search.js'; // Asumiendo la ruta
+
 import { saveState, loadState } from '../utils/StateManager.js';
 
 // ... (función gaussianRandom)

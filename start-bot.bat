@@ -10,29 +10,12 @@ echo.
 REM --- PASO 1: INICIAR CHROME ---
 echo [1] Abriendo Google Chrome en modo de depuracion...
 
-REM Intenta encontrar Chrome en las ubicaciones comunes de Windows
-if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" (
-    set "CHROME_PATH=%ProgramFiles%\Google\Chrome\Application\chrome.exe"
-) else if exist "%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe" (
-    set "CHROME_PATH=%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe"
-) else if exist "%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe" (
-    set "CHROME_PATH=%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"
-) else (
-    REM Si no se encuentra, usa la ruta que estaba antes o pide al usuario
-    set "CHROME_PATH=C:\chrome-win\chrome.exe"
-    echo.
-    echo [ADVERTENCIA] No se pudo encontrar Chrome automaticamente.
-    echo             Usando la ruta por defecto: %CHROME_PATH%
-    echo             Si es incorrecta, por favor edita este archivo (start-bot.bat).
-    echo.
-)
-
+REM Ruta de tu instalacion de Chrome
+set CHROME_PATH="C:\chrome-win\chrome.exe"
 set BROKER_URL="https://qxbroker.com/es/trade"
-set DEBUG_PORT=9222
 
-echo Usando Chrome desde: "%CHROME_PATH%"
 REM Inicia Chrome en una nueva ventana con la URL del broker
-start "Chrome para Bot Fantasma" "%CHROME_PATH%" --remote-debugging-port=%DEBUG_PORT% %BROKER_URL%
+start "Chrome para Bot Fantasma" %CHROME_PATH% --remote-debugging-port=9222 %BROKER_URL%
 
 echo.
 echo --- ACCION REQUERIDA ---
@@ -54,8 +37,3 @@ echo [2] Iniciando el Bot Fantasma... El bot tomara el control ahora.
 echo.
 
 npm start
-
-echo.
-echo ===================================================================
-echo El proceso ha finalizado. Presiona 'ENTER' para cerrar esta ventana.
-pause > nul

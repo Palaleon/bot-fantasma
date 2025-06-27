@@ -1,8 +1,9 @@
 import logger from '../utils/logger.js';
 
 class BrokerConnector {
-  constructor(page) {
+  constructor(page, wsInterceptor) {
     this.page = page;
+    this.wsInterceptor = wsInterceptor;
   }
 
   async executeTrade({ asset, amount, action, time = 5 }) {
@@ -18,19 +19,13 @@ class BrokerConnector {
         optionType: 100,
       };
 
-      const result = await this.page.evaluate((payload) => {
-        if (!window.__socket || window.__socket.readyState !== WebSocket.OPEN) {
-          return { success: false, error: 'Socket no está disponible o no está abierto.' };
-        }
-        const message = `42["trade", ${JSON.stringify(payload)}]`;
-        window.__socket.send(message);
-        return { success: true, sentMessage: message };
-      }, orderPayload);
+      const message = `42["trade", ${JSON.stringify(orderPayload)}]`;
+      const sent = this.wsInterceptor.send(message);
 
-      if (result.success) {
-        logger.warn(`BrokerConnector: ¡ORDEN ENVIADA! Mensaje: ${result.sentMessage}`);
+      if (sent) {
+        logger.warn(`BrokerConnector: ¡ORDEN ENVIADA! Mensaje: ${message}`);
       } else {
-        logger.error(`BrokerConnector: Fallo al enviar orden. Motivo: ${result.error}`);
+        logger.error('BrokerConnector: Fallo al enviar orden. El socket no estaba listo.');
       }
     } catch (error) {
       logger.error(`BrokerConnector: Error crítico al intentar ejecutar la operación: ${error.message}`);

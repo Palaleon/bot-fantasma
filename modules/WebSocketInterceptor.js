@@ -37,17 +37,19 @@ class WebSocketInterceptor extends EventEmitter {
       const processMessageFuncName = `__processWebSocketMessage_${this.id.replace(/[^a-zA-Z0-9_]/g, '')}`;
       const processTextFuncName = `__processWebSocketText_${this.id.replace(/[^a-zA-Z0-9_]/g, '')}`;
       const notifyStatusFuncName = `__notifyWebSocketStatus_${this.id.replace(/[^a-zA-Z0-9_]/g, '')}`;
+      const logFromBrowserFuncName = `__logFromBrowser_${this.id.replace(/[^a-zA-Z0-9_]/g, '')}`;
 
       await page.exposeFunction(processMessageFuncName, this._handleBinaryMessage.bind(this));
       await page.exposeFunction(processTextFuncName, this._handleTextMessage.bind(this));
       await page.exposeFunction(notifyStatusFuncName, this._handleStatusChange.bind(this));
+      await page.exposeFunction(logFromBrowserFuncName, (msg) => logger.info(`[Browser-${this.id}] ${msg}`));
 
-      await page.evaluateOnNewDocument((urlPattern, msgFunc, textFunc, statusFunc) => {
+      await page.evaluateOnNewDocument((urlPattern, msgFunc, textFunc, statusFunc, logFunc) => {
         const OriginalWebSocket = window.WebSocket;
         window.WebSocket = function (...args) {
           const socket = new OriginalWebSocket(...args);
           if (args[0] && args[0].includes(urlPattern)) {
-            console.log(`[WebSocketInterceptor] Socket interceptado para ${urlPattern}`);
+            window[logFunc]('Socket interceptado para ' + urlPattern);
             socket.addEventListener('message', async (event) => {
               try {
                 if (event.data instanceof Blob || event.data instanceof ArrayBuffer) {
@@ -61,16 +63,16 @@ class WebSocketInterceptor extends EventEmitter {
                   window[textFunc](event.data);
                 }
               } catch (error) {
-                console.error(`[WebSocketInterceptor] Error procesando mensaje para ${urlPattern}:`, error);
+                window[logFunc]('Error procesando mensaje: ' + error.message);
               }
             });
             socket.addEventListener('open', () => window[statusFunc]('connected'));
             socket.addEventListener('close', () => window[statusFunc]('disconnected'));
-            socket.addEventListener('error', (error) => console.error(`[WebSocketInterceptor] Error en socket para ${urlPattern}:`, error));
+            socket.addEventListener('error', (error) => window[logFunc]('Error en socket: ' + error.message));
           }
           return socket;
         };
-      }, wsUrlPattern, processMessageFuncName, processTextFuncName, notifyStatusFuncName);
+      }, wsUrlPattern, processMessageFuncName, processTextFuncName, notifyStatusFuncName, logFromBrowserFuncName);
 
       this.isActive = true;
       logger.info(`✅ WebSocketInterceptor v1.3 [${this.id}] instalado y activo`);

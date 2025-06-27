@@ -49,8 +49,14 @@ const config = {
   // NUEVO: Configuración del Broker
   broker: {
     url: process.env.BROKER_URL || 'https://qxbroker.com/es/trade',
-    email: process.env.BROKER_EMAIL,
-    password: process.env.BROKER_PASSWORD,
+    email: process.env.BROKER_EMAIL || '',
+    password: process.env.BROKER_PASSWORD || '',
+  },
+
+  // Configuración de Puppeteer para controlar el navegador
+  puppeteer: {
+    // Puerto para conectar con una instancia de Chrome existente
+    debuggingPort: parseInt(process.env.PUPPETEER_DEBUGGING_PORT, 10) || 9222,
   }
 };
 
