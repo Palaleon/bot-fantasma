@@ -1,59 +1,57 @@
+import { EventEmitter } from 'events';
 import logger from '../utils/logger.js';
-import { getCandleStartTimestamp, TIMEFRAMES } from '../utils/timeUtils.js';
 
-class CandleBuilder {
-  constructor(onCandleClosed) {
-    this.activeCandles = new Map();
-    this.onCandleClosed = onCandleClosed;
-  }
-
-  addPip(pipData) {
-    const { rawAsset, price, timestamp } = pipData;
-    this.checkForClosedCandles(timestamp);
-
-    if (!this.activeCandles.has(rawAsset)) {
-      this.activeCandles.set(rawAsset, new Map());
+class CandleBuilder extends EventEmitter {
+    constructor(periodInSeconds) {
+        super();
+        this.period = periodInSeconds;
+        this.currentCandle = null;
     }
-    const assetCandles = this.activeCandles.get(rawAsset);
 
-    for (const [timeframe, durationMs] of Object.entries(TIMEFRAMES)) {
-      const candleStart = getCandleStartTimestamp(timestamp, durationMs);
-      
-      if (!assetCandles.has(timeframe)) {
-        const newCandle = {
-          open: price,
-          high: price,
-          low: price,
-          close: price,
-          start: candleStart,
-          end: candleStart + durationMs,
-          asset: rawAsset,
-          timeframe: timeframe,
-          volume: 1
-        };
-        assetCandles.set(timeframe, newCandle);
-        logger.debug(`[${rawAsset}|${timeframe}] Nueva vela creada. Open: ${price}`);
-      } else {
-        const candle = assetCandles.get(timeframe);
-        candle.high = Math.max(candle.high, price);
-        candle.low = Math.min(candle.low, price);
-        candle.close = price;
-        candle.volume += 1;
-      }
-    }
-  }
+    addPip(pip, priming = false) {
+        const { price, timestamp } = pip;
+        const candleTimestamp = Math.floor(timestamp / this.period) * this.period;
 
-  checkForClosedCandles(currentTimestamp) {
-    for (const [asset, assetCandles] of this.activeCandles.entries()) {
-      for (const [timeframe, candle] of assetCandles.entries()) {
-        if (currentTimestamp >= candle.end) {
-          logger.info(`[${asset}|${timeframe}] Vela cerrada. OHLC: ${candle.open}/${candle.high}/${candle.low}/${candle.close}`);
-          this.onCandleClosed(candle);
-          assetCandles.delete(timeframe);
+        if (!this.currentCandle) {
+            this.startNewCandle(price, candleTimestamp);
+            return;
         }
-      }
+
+        if (candleTimestamp > this.currentCandle.time && !priming) {
+            this.closeCurrentCandle();
+            this.startNewCandle(price, candleTimestamp);
+        } else {
+            this.updateCurrentCandle(price);
+        }
     }
-  }
+
+    startNewCandle(price, time) {
+        this.currentCandle = {
+            open: price,
+            high: price,
+            low: price,
+            close: price,
+            volume: 1,
+            time: time
+        };
+        // logger.debug(`Nueva vela iniciada a las ${new Date(time * 1000).toLocaleTimeString()}`);
+    }
+
+    updateCurrentCandle(price) {
+        if (!this.currentCandle) return;
+        this.currentCandle.high = Math.max(this.currentCandle.high, price);
+        this.currentCandle.low = Math.min(this.currentCandle.low, price);
+        this.currentCandle.close = price;
+        this.currentCandle.volume += 1;
+    }
+
+    closeCurrentCandle() {
+        if (this.currentCandle) {
+            // logger.info(`Vela cerrada para ${new Date(this.currentCandle.time * 1000).toLocaleTimeString()}: O:${this.currentCandle.open}, H:${this.currentCandle.high}, L:${this.currentCandle.low}, C:${this.currentCandle.close}`);
+            this.emit('candleClosed', this.currentCandle);
+            this.currentCandle = null;
+        }
+    }
 }
 
 export default CandleBuilder;
