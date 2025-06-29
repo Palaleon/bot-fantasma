@@ -2,81 +2,114 @@ import { EventEmitter } from 'events';
 import logger from '../utils/logger.js';
 import IndicatorEngine from './IndicatorEngine.js';
 
+/**
+ * ChannelWorker Multi-Estratégico
+ * Evalúa oportunidades en múltiples temporalidades estratégicas (1m, 5m, 15m),
+ * confirmando cada una con una única capa táctica (5s).
+ */
 class ChannelWorker extends EventEmitter {
     constructor(asset) {
         super();
         this.asset = asset;
-        this.indicatorEngine = new IndicatorEngine(); // Cada canal tiene su propio motor.
-        logger.info(`CHANNEL-WORKER: Nuevo trabajador creado para ${asset}`);
-
-        // Aquí podrías tener lógicas diferentes o motores por temporalidad si fuera necesario
-        // Por ahora, usamos un único motor que se actualiza desde diferentes velas.
+        this.indicatorEngine = new IndicatorEngine();
+        logger.info(`CHANNEL-WORKER: Trabajador Multi-Estratégico creado para ${asset}`);
     }
 
     /**
-     * Maneja una vela cerrada de cualquier temporalidad.
-     * @param {object} candleData - La vela cerrada, que incluye el 'timeframe'.
+     * Maneja una vela cerrada. Si es estratégica, activa la evaluación.
+     * @param {object} candleData - La vela cerrada, que incluye 'timeframe'.
      * @returns Una señal de trading o null.
      */
     handleCandle(candleData) {
-        // 1. Actualizar indicadores con la vela recibida.
-        // El IndicatorEngine internamente podría tener lógicas para usar diferentes temporalidades.
-        // Por ahora, asumimos que actualiza un estado general.
+        // Siempre actualizamos el motor de indicadores primero.
         this.indicatorEngine.update(candleData);
 
-        // 2. Evaluar la estrategia basada en el estado actual de los indicadores.
-        // Aquí es donde se decide si se debe operar.
-        // La lógica de la estrategia podría depender del 'timeframe' de la vela que activó la evaluación.
-        const signal = this.evaluateStrategy(candleData.timeframe);
-
-        if (signal) {
-            return {
-                ...signal,
-                asset: this.asset,
-                channel: this.asset, // Para referencia
-            };
+        // La estrategia se dispara si la vela es de CUALQUIER temporalidad estratégica.
+        if (this.indicatorEngine.strategicTimeframes.includes(candleData.timeframe)) {
+            const signal = this.evaluateStrategy(candleData.timeframe);
+            
+            if (signal) {
+                return {
+                    ...signal,
+                    asset: this.asset,
+                    channel: this.asset,
+                    triggeredBy: candleData.timeframe // Añadimos contexto sobre qué disparó la señal
+                };
+            }
         }
+
         return null;
     }
 
     /**
-     * Evalúa la estrategia de trading.
-     * Esta es la "receta" que decide cuándo comprar o vender.
-     * @param {string} triggeredByTimeframe - La temporalidad que disparó esta evaluación.
+     * Evalúa la estrategia para una temporalidad estratégica específica.
+     * @param {string} timeframe - La temporalidad estratégica que se está evaluando ('1m', '5m', '15m').
      * @returns Un objeto de señal o null.
      */
-    evaluateStrategy(triggeredByTimeframe) {
-        // EJEMPLO DE ESTRATEGIA SIMPLE:
-        // Si la vela que cerró es de 5s (táctica), y la media móvil de 1m (estratégica) es alcista, comprar.
+    evaluateStrategy(timeframe) {
+        const indicators = this.indicatorEngine.getIndicators();
+        const strategic = indicators.strategic[timeframe];
+        const tactic = indicators.tactic;
 
-        const { rsi, sma_fast, sma_slow } = this.indicatorEngine.getIndicators();
+        // --- Fase 1: Verificación de Condiciones Estratégicas ---
+        if (!strategic || !strategic.sma_fast || !strategic.sma_slow || !strategic.rsi) {
+            return null; // Indicadores para esta temporalidad no están listos.
+        }
 
-        // Asegurarse de que los indicadores están listos
-        if (!rsi || !sma_fast || !sma_slow) {
+        let strategicSignal = null;
+        if (strategic.sma_fast > strategic.sma_slow && strategic.rsi < 68) {
+            strategicSignal = 'call';
+        } else if (strategic.sma_slow > strategic.sma_fast && strategic.rsi > 32) {
+            strategicSignal = 'put';
+        }
+
+        if (!strategicSignal) {
+            return null;
+        }
+        
+        logger.warn(`STRATEGY[${this.asset}][${timeframe}]: Oportunidad estratégica detectada: ${strategicSignal.toUpperCase()}`);
+
+        // --- Fase 2: Búsqueda de Confirmación Táctica ---
+        if (!tactic.rsi) {
+            logger.warn(`STRATEGY[${this.asset}][${timeframe}]: Oportunidad encontrada, pero esperando confirmación táctica (RSI 5s no listo).`);
             return null;
         }
 
-        // Lógica de decisión
-        let decision = null;
-        let confidence = 0;
-
-        if (rsi > 70 && sma_fast < sma_slow) {
-            decision = 'put'; // 'red'
-            confidence = (rsi - 70) / 30; // Normalizar confianza
-        } else if (rsi < 30 && sma_fast > sma_slow) {
-            decision = 'call'; // 'green'
-            confidence = (30 - rsi) / 30; // Normalizar confianza
+        let isTacticConfirmed = false;
+        if (strategicSignal === 'call' && tactic.rsi > 52) {
+            isTacticConfirmed = true;
+        } else if (strategicSignal === 'put' && tactic.rsi < 48) {
+            isTacticConfirmed = true;
         }
 
-        if (decision) {
-            logger.info(`STRATEGY[${this.asset}]: Decisión: ${decision.toUpperCase()} | Confianza: ${confidence.toFixed(2)} | RSI: ${rsi.toFixed(2)}`);
-            return {
-                decision: decision,
-                confidence: parseFloat(confidence.toFixed(2)),
-            };
+        if (!isTacticConfirmed) {
+            return null;
         }
+        
+        // --- Fase 3: Generación de la Señal Final ---
+        const confidence = this.calculateConfidence(strategic, tactic, strategicSignal);
+        
+        logger.warn(`STRATEGY[${this.asset}][${timeframe}]: ¡CONFIRMACIÓN TÁCTICA! Generando señal ${strategicSignal.toUpperCase()} con confianza ${confidence.toFixed(2)}.`);
 
-        return null;
+        return {
+            decision: strategicSignal,
+            confidence: confidence,
+        };
+    }
+
+    /**
+     * Calcula la confianza basada en la fuerza de los indicadores.
+     */
+    calculateConfidence(strategic, tactic, signal) {
+        let confidence = 0.5;
+        const spread = Math.abs(strategic.sma_fast - strategic.sma_slow) / strategic.sma_slow;
+
+        if (signal === 'call') {
+            confidence += (strategic.rsi - 50) / 100 + (tactic.rsi - 50) / 100 + spread * 2;
+        } else {
+            confidence += (50 - strategic.rsi) / 100 + (50 - tactic.rsi) / 100 + spread * 2;
+        }
+        return Math.max(0.5, Math.min(1.0, confidence));
     }
 }
 

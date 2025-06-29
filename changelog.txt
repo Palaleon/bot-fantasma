@@ -1,20 +1,36 @@
-## Historial de Cambios del Bot Fantasma
+# HISTORIAL DE CAMBIOS - BOT FANTASMA
 
-### Versión 4.0 (28-06-2025)
+## v4.1: La Arquitectura Híbrida Definitiva (Python-Node.js)
 
-**MEJORA MAYOR: Implementación del Motor de Análisis Híbrido (Estratégico-Táctico)**
+*   **Cambio Arquitectónico Principal:** Se ha migrado a una arquitectura de dos componentes para una estabilidad 24/7 sin precedentes.
+    *   **NUEVO `harvester.py` (Los Oídos):** Un script de Python ultra-estable, basado en Playwright, cuya única misión es conectarse al navegador, interceptar los WebSockets y "cosechar" los datos del mercado (`pip` y `candles-generated`).
+    *   **Servidor TCP:** El `harvester.py` sirve estos datos a través de un servidor TCP en `localhost:8765`.
+    *   **Refactorización de Node.js (El Cerebro y Brazo):**
+        *   Se ha **eliminado `puppeteer`** como dependencia para la lectura de datos, reduciendo drásticamente la complejidad y los puntos de fallo.
+        *   **NUEVO `connectors/TCPConnector.js`:** Un cliente TCP robusto que se conecta al `harvester.py` para recibir el flujo de datos.
+        *   **ELIMINADO `modules/pipReceiver.js`:** Obsoleto gracias al nuevo conector TCP.
+        *   **INTACTO:** La lógica para inyectar trades (`BrokerConnector`, `wsInterceptorMain`) no ha sido alterada, manteniendo la capacidad de operar de forma segura.
 
-Esta versión representa una re-arquitectura fundamental del cerebro de análisis del bot para mejorar drásticamente la calidad y precisión de las señales.
+*   **Lógica de Trading (Corrección Final y Definitiva):**
+    *   **`IndicatorEngine.js`:** Re-diseñado para ser verdaderamente **Multi-Estratégico**. Ahora mantiene un conjunto de indicadores SMA y RSI para cada temporalidad estratégica (`1m`, `5m`, `15m`) de forma independiente.
+    *   **`ChannelWorker.js`:** Re-escrito para ser **Multi-Disparo**. La lógica de evaluación ahora se activa con CUALQUIER vela estratégica (`1m`, `5m`, `15m`) y busca la confirmación táctica en la capa de `5s`. Esto alinea el bot con la estrategia real multi-temporalidad.
 
-*   **`IndicatorEngine v4.0`:**
-    *   **Nueva Arquitectura Híbrida:** El motor ahora opera en dos capas concurrentes:
-        1.  **Capa Estratégica:** Analiza velas de largo plazo (1m, 5m, 15m) para determinar la dirección general del mercado.
-        2.  **Capa Táctica:** Analiza velas de alta frecuencia (5s) para medir el "momentum" inmediato.
-    *   **Lógica de Confirmación:** Una señal estratégica (ej. una oportunidad de compra en la vela de 5m) solo se aprueba si la capa táctica confirma que el momentum de los últimos segundos está alineado con la señal. Esto tiene como objetivo filtrar un gran número de entradas falsas.
+---
+
+## v4.0: Estrategia de Doble Capa Táctica-Estratégica
+
+*   **Motor de Análisis (`IndicatorEngine.js`):**
+    *   **Re-diseñado desde cero** para implementar una estrategia de **Doble Capa**.
+    *   **Capa Estratégica:** Usa velas de `1m` (configurable) con SMAs y RSI para determinar la tendencia y las oportunidades a medio plazo.
+    *   **Capa Táctica:** Usa velas de `5s` con un RSI rápido para medir el momentum y confirmar el punto de entrada.
+
+*   **Lógica de Trading (`ChannelWorker.js`):**
+    *   **Re-escrito desde cero** para reflejar la nueva estrategia.
+    *   **Disparo Estratégico:** La evaluación de una posible operación **SOLO** se activa cuando se cierra una vela de la capa estratégica.
+    *   **Confirmación Táctica:** Una oportunidad estratégica solo se convierte en una señal de trading si la capa táctica confirma que el momentum inmediato está alineado.
 
 *   **Sistema de Velas:**
-    *   **`utils/timeUtils.js`:** Se ha añadido soporte para la generación de velas de 5 segundos (`5s`) y 15 minutos (`15m`).
-    *   **`CandleBuilder.js`:** Ahora genera velas de 5s, 1m, 5m y 15m a partir del mismo flujo de pips, alimentando ambas capas del `IndicatorEngine`.
+    *   **`pip-worker.js`:** Actualizado a v2.0 (Multi-Temporalidad). Ahora es una "fábrica" que construye velas de `5s`, `1m`, `5m` y `15m` simultáneamente desde el mismo flujo de pips, alimentando ambas capas del `IndicatorEngine`.
 
 *   **Arquitectura General:**
     *   Se ha consolidado el flujo de datos para asegurar que las velas de todas las temporalidades lleguen correctamente al nuevo motor de análisis a través de los workers.
@@ -24,10 +40,3 @@ Esta versión representa una re-arquitectura fundamental del cerebro de análisi
     *   **`changelog.txt`:** Creado para mantener un registro histórico de los cambios significativos.
 
 ---
-
-### Versión 3.2 (Fecha anterior)
-*   **MEJORA:** Introducción de la arquitectura de `Workers` para separar la construcción de velas (`pip-worker`) del análisis de señales (`analysis-worker`), mejorando el rendimiento del hilo principal.
-*   **CORRECCIÓN:** Solucionado el problema de comunicación entre los workers que impedía que las velas llegaran al motor de análisis.
-
-### Versión 2.1 (Fecha anterior)
-*   **MEJORA MAYOR:** Reemplazo del sistema de captura de pips basado en TCP/Python por un `WebSocketInterceptor` nativo en JavaScript, reduciendo la latencia en un 90% y eliminando dependencias externas.
