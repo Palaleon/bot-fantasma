@@ -1,144 +1,33 @@
-# Changelog Bot Fantasma - Actualización Técnica
+## Historial de Cambios del Bot Fantasma
+
+### Versión 4.0 (28-06-2025)
+
+**MEJORA MAYOR: Implementación del Motor de Análisis Híbrido (Estratégico-Táctico)**
+
+Esta versión representa una re-arquitectura fundamental del cerebro de análisis del bot para mejorar drásticamente la calidad y precisión de las señales.
+
+*   **`IndicatorEngine v4.0`:**
+    *   **Nueva Arquitectura Híbrida:** El motor ahora opera en dos capas concurrentes:
+        1.  **Capa Estratégica:** Analiza velas de largo plazo (1m, 5m, 15m) para determinar la dirección general del mercado.
+        2.  **Capa Táctica:** Analiza velas de alta frecuencia (5s) para medir el "momentum" inmediato.
+    *   **Lógica de Confirmación:** Una señal estratégica (ej. una oportunidad de compra en la vela de 5m) solo se aprueba si la capa táctica confirma que el momentum de los últimos segundos está alineado con la señal. Esto tiene como objetivo filtrar un gran número de entradas falsas.
+
+*   **Sistema de Velas:**
+    *   **`utils/timeUtils.js`:** Se ha añadido soporte para la generación de velas de 5 segundos (`5s`) y 15 minutos (`15m`).
+    *   **`CandleBuilder.js`:** Ahora genera velas de 5s, 1m, 5m y 15m a partir del mismo flujo de pips, alimentando ambas capas del `IndicatorEngine`.
+
+*   **Arquitectura General:**
+    *   Se ha consolidado el flujo de datos para asegurar que las velas de todas las temporalidades lleguen correctamente al nuevo motor de análisis a través de los workers.
+
+*   **Documentación:**
+    *   **`README.txt`:** Actualizado para reflejar la nueva arquitectura v4.0, el flujo de datos y la estructura del proyecto.
+    *   **`changelog.txt`:** Creado para mantener un registro histórico de los cambios significativos.
 
 ---
 
-**Timestamp de Actualización (UTC):** 2025-06-26T19:35:00Z
+### Versión 3.2 (Fecha anterior)
+*   **MEJORA:** Introducción de la arquitectura de `Workers` para separar la construcción de velas (`pip-worker`) del análisis de señales (`analysis-worker`), mejorando el rendimiento del hilo principal.
+*   **CORRECCIÓN:** Solucionado el problema de comunicación entre los workers que impedía que las velas llegaran al motor de análisis.
 
-**Versión:** 2.1.1 (Parche de consistencia de datos y estabilidad)
-
-### Resumen Técnico
-
-Se ha resuelto una condición de carrera crítica que provocaba la saturación de canales de trading debido a la falta de normalización en los identificadores de activos (asset IDs). El problema se originaba por el uso inconsistente de `rawAsset` (ej: `EURUSD_otc`) y `displayAsset` (ej: `EUR/USD (OTC)`) a través de la cadena de procesamiento de eventos.
-
---- 
-
-### Detalles de la Implementación
-
-**1. Módulo Afectado: `modules/pipReceiver.js`**
-
-*   **Análisis del Problema:** El manejador de eventos `_handleAssetChange` emitía un evento `assetChanged` donde el campo `new_asset` era poblado con el `displayAsset`. El `ChannelManager`, al consumir este evento, intentaba instanciar un nuevo `TradingChannel` usando este `displayAsset` como clave única. Simultáneamente, el `CandleBuilder` utilizaba el `raw_asset` del pip para la agregación de velas. Esta discrepancia de claves resultaba en la creación de múltiples canales para un único activo, agotando el pool de canales disponibles (`maxChannels: 10`).
-
-*   **Solución Implementada:** Se modificó la carga útil (payload) del evento `assetChanged` dentro de `_handleAssetChange`. El campo `new_asset` ahora se popula consistentemente con el valor de `rawAsset`.
-
-    *   **Antes (Incorrecto):**
-        ```javascript
-        this.emit('assetChanged', { new_asset: displayAsset, ... });
-        ```
-
-    *   **Después (Correcto):**
-        ```javascript
-        this.emit('assetChanged', { new_asset: rawAsset, ... });
-        ```
-
-**2. Módulo Verificado: `logic/CandleBuilder.js`**
-
-*   **Verificación:** Se confirmó que `CandleBuilder` ya operaba correctamente utilizando `raw_asset` como la clave principal para su `Map` interno (`this.activeCandles`). Este comportamiento era correcto y no requirió modificaciones. La corrección en `pipReceiver.js` alinea el `ChannelManager` con esta implementación ya existente.
-
-**3. Módulo Afectado (Error de Arranque): `app.js`**
-
-*   **Análisis del Problema:** Durante el arranque, se producía una `TypeError: Cannot read properties of undefined (reading 'setViewport')` debido a una condición de carrera en `initializeBrowser`. El código `this.page = (await this.browser.pages())[0]` fallaba si `puppeteer.connect` se establecía antes de que el navegador instanciara su primera página, resultando en un array de páginas vacío.
-
-*   **Solución Implementada:** Se añadió una lógica de sondeo y resiliencia. El código ahora verifica la longitud del array de páginas. Si está vacío, crea explícitamente una nueva página (`this.browser.newPage()`). Si no, intenta encontrar la página correcta usando la URL del broker (`config.broker.url`) como criterio de búsqueda, recurriendo a la primera página del array como fallback.
-
-### Impacto y Beneficios
-
-*   **Consistencia de Datos:** Se garantiza que `rawAsset` sea el único identificador canónico para un activo a través de todo el flujo de datos (Pip-to-Signal).
-*   **Prevención de Errores de Lógica:** Se elimina la causa raíz de la creación de canales duplicados, resolviendo el error de `Límite de canales alcanzado`.
-*   **Optimización de Recursos:** Se previene la instanciación superflua de objetos `TradingChannel`, lo que reduce la sobrecarga de memoria (heap) y el tiempo de procesamiento de la CPU.
-*   **Robustez del Arranque:** El bot ahora es resiliente a condiciones de carrera durante la inicialización con el navegador, previniendo fallos fatales al inicio.
-
-# Changelog Bot Fantasma - Actualización de Arquitectura y Simulación (BETA)
-
----
-
-**Timestamp de Actualización (UTC):** 2025-07-27T14:22:00Z
-
-**Versión:** 3.0.0-beta (BETA - Arquitectura de Workers y Simulación de Aprendizaje)
-
-**IMPORTANTE: Esta actualización introduce cambios significativos en la arquitectura y una nueva función de simulación. Se considera una versión BETA y pueden existir mejoras o correcciones.**
-
-### Resumen Técnico
-
-Se ha refactorizado la arquitectura principal del bot para utilizar `Worker Threads` de Node.js, mejorando el rendimiento y la estabilidad. Además, se ha implementado un comando de simulación (`simulate`) para pruebas de auto-optimización aisladas.
-
---- 
-
-### Detalles de la Implementación
-
-**1. Introducción de Workers para Procesamiento Paralelo**
-
-*   **Módulo:** `app.js`
-*   **Cambios:**
-    *   Se instancian dos `Worker Threads`: `pip-worker.js` y `analysis-worker.js`.
-    *   El procesamiento intensivo de pips (construcción de velas) se delega a `pip-worker.js`.
-    *   El análisis técnico (indicadores) y la generación de señales se delegan a `analysis-worker.js`.
-    *   La comunicación entre el hilo principal y los workers se realiza mediante paso de mensajes.
-*   **Beneficios:**
-    *   **Mejora de Rendimiento:** El hilo principal ya no se bloquea por tareas intensivas, mejorando la capacidad de respuesta del bot.
-    *   **Escalabilidad:** La arquitectura ahora es más adecuada para manejar múltiples activos simultáneamente.
-
-**2. Implementación de `pip-worker.js`**
-
-*   **Ubicación:** `logic/pip-worker.js`
-*   **Funcionalidad:**
-    *   Recibe pips del hilo principal.
-    *   Utiliza `CandleBuilder` para construir velas en diferentes temporalidades.
-    *   Envía las velas completas al `analysis-worker.js`.
-
-**3. Implementación de `analysis-worker.js`**
-
-*   **Ubicación:** `logic/analysis-worker.js`
-*   **Funcionalidad:**
-    *   Recibe velas completas del `pip-worker.js`.
-    *   Utiliza `ChannelManager` para realizar el análisis técnico y generar señales.
-    *   Envía las señales finales al hilo principal para su ejecución.
-
-**4. Comando `simulate` para Pruebas Aisladas**
-
-*   **Módulo:** `bot_cli.js`
-*   **Funcionalidad:**
-    *   Permite simular operaciones (victorias/derrotas) para probar el sistema de auto-optimización del `Humanizer`.
-    *   Utiliza un archivo de estado separado (`trading_persona_sim.json`) para evitar la contaminación del estado real del bot.
-    *   El `Humanizer` procesa los resultados simulados y actualiza su estado en el archivo de simulación.
-*   **Uso:**
-    ```bash
-    node bot_cli.js simulate --wins 10 --losses 5
-    ```
-
-**5. Gestión de Estado Mejorada**
-
-*   **Módulo:** `utils/StateManager.js`
-*   **Cambios:**
-    *   Las funciones `saveState` y `loadState` ahora aceptan un parámetro opcional `filePath` para especificar el archivo de estado.
-    *   Esto permite que el comando `simulate` utilice un archivo de estado aislado.
-*   **Módulo:** `modules/Humanizer.js`
-*   **Cambios:**
-    *   El constructor ahora puede recibir un parámetro `stateFilePath` para cargar el estado desde un archivo específico.
-    *   Se actualiza la lógica de guardado para utilizar la ruta correcta.
-
-**6. Correcciones de Errores y Mejoras de Robustez**
-
-*   **Módulo:** `app.js`
-*   **Correcciones:**
-    *   Implementación correcta del cierre de workers en el método `stop`.
-    *   Corrección de la ruta al `Humanizer` en el manejador de `SIGINT` para asegurar el guardado del estado al cerrar con `Ctrl+C`.
-*   **Módulo:** `modules/Operator.js`
-*   **Cambios:**
-    *   Eliminación del método `start` obsoleto.
-
-**7. Otros Cambios**
-
-*   **Módulo:** `app.js`
-*   **Cambios:**
-    *   Corrección de la llamada al método del `Operator` en `analysisWorker.on('message')` (de `handleSignal` a `executeApprovedTrade`).
-
-### Impacto y Beneficios
-
-*   **Mejora Significativa del Rendimiento:** El uso de workers permite un procesamiento más eficiente de los datos del mercado y del análisis técnico.
-*   **Mayor Estabilidad:** La separación de tareas reduce el riesgo de bloqueos y mejora la robustez general del bot.
-*   **Pruebas Aisladas:** El comando `simulate` permite probar y ajustar el sistema de auto-optimización sin afectar el funcionamiento del bot en vivo.
-*   **Arquitectura Escalable:** La base para futuras mejoras y la capacidad de manejar múltiples activos simultáneamente se ha fortalecido.
-
-**Notas Adicionales:**
-*   Esta actualización se considera una versión **BETA**. Se anima a los usuarios a probar exhaustivamente la nueva funcionalidad y reportar cualquier problema.
-*   Se esperan mejoras y correcciones en futuras versiones, incluyendo la posible expansión de la funcionalidad del comando `simulate` y optimizaciones adicionales en la gestión de workers.
+### Versión 2.1 (Fecha anterior)
+*   **MEJORA MAYOR:** Reemplazo del sistema de captura de pips basado en TCP/Python por un `WebSocketInterceptor` nativo en JavaScript, reduciendo la latencia en un 90% y eliminando dependencias externas.

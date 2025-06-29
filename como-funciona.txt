@@ -1,0 +1,83 @@
+# Documentación Técnica del Bot Fantasma v4.0
+
+## Introducción
+
+Este documento desglosa el funcionamiento interno completo del Bot Fantasma, una plataforma de trading automatizado de alta frecuencia. La arquitectura está diseñada para ser modular, escalable y de muy baja latencia, utilizando un enfoque de análisis híbrido para maximizar la precisión de las señales.
+
+El flujo de datos es asíncrono y se basa en eventos, orquestado a través de workers para no bloquear el hilo principal de la aplicación.
+
+---
+
+## Flujo de Operación Detallado
+
+El viaje de un dato, desde un movimiento de precio en el mercado hasta una operación ejecutada, sigue 8 pasos principales:
+
+### Paso 1: El Arranque y la Orquestación (`app.js`)
+
+Todo comienza en `app.js`. Este archivo actúa como el director de orquesta.
+
+1.  **Conexión:** Utiliza `puppeteer` para conectarse a una instancia de Chrome que ya está en ejecución en modo de depuración. Esto le da control total sobre las páginas del broker.
+2.  **Doble Intercepción:** Crea dos páginas del broker. Una (`main`) se usará para **enviar** órdenes de trading, y la otra (`audit`) se usará para **escuchar** el flujo de precios (pips). Esta separación evita conflictos.
+3.  **Instanciación de Módulos:** Crea una instancia de todos los módulos principales: `WebSocketInterceptor`, `PipReceiver`, `Operator`, conectores, etc.
+4.  **Creación de Workers:** Inicia dos `Worker Threads` separados:
+    *   `pip-worker.js`: Su única responsabilidad será construir velas. Es la "fábrica".
+    *   `analysis-worker.js`: Su única responsabilidad será analizar las velas y generar señales. Es el "cerebro".
+5.  **Conexión del Flujo (El "Pegamento"):** `app.js` establece los listeners de eventos que conectan a todos los módulos y workers, creando el pipeline de datos.
+
+### Paso 2: La Captura del Pip (`WebSocketInterceptor.js` -> `pipReceiver.js`)
+
+1.  **Intercepción Nativa:** El `WebSocketInterceptor` se adhiere a la página de `audit` y captura el tráfico crudo del WebSocket del broker (`wss://ws2.qxbroker.com/socket.io/`).
+2.  **Decodificación:** Decodifica los mensajes binarios y los convierte en objetos JSON legibles.
+3.  **Emisión de Pips:** Cuando detecta un mensaje de precio (un "pip"), extrae la información esencial: `price`, `rawAsset` y, crucialmente, el `timestamp` exacto del broker.
+4.  **Estandarización:** El `PipReceiver` escucha estos eventos del interceptor. Su función es actuar como un embudo limpio, tomando los datos decodificados y emitiendo un evento `pip` estandarizado para el resto del sistema. A partir de aquí, el resto del bot no necesita saber de dónde vienen los pips, solo que `PipReceiver` se los provee de forma fiable.
+
+### Paso 3: La Fábrica de Velas (`pip-worker.js` y `CandleBuilder.js`)
+
+1.  **Recepción en el Worker:** El `pip-worker` recibe el objeto `pip` enviado desde `app.js`.
+2.  **Construcción de Velas:** Dentro del worker, el `CandleBuilder` toma el pip.
+3.  **Timestamp es Clave:** Usando el `timestamp` del pip, la función `getCandleStartTimestamp` determina a qué vela pertenece ese pip para CADA una de las temporalidades definidas (`5s`, `1m`, `5m`, `15m`).
+4.  **Actualización:** Se actualiza la vela correspondiente a cada temporalidad: se ajusta el `high` y `low`, se actualiza el `close` con el precio del pip actual y se incrementa el `volume`.
+5.  **Cierre de Vela:** El `CandleBuilder` comprueba constantemente si el `timestamp` del pip actual ha superado la hora de finalización (`candle.end`) de alguna de las velas activas. Si es así, la vela se considera "cerrada".
+6.  **Emisión de la Vela:** Cuando una vela se cierra, el `pip-worker` envía un mensaje `{ type: 'candleClosed', data: candle }` de vuelta al hilo principal (`app.js`).
+
+### Paso 4: El Análisis (El Viaje al Cerebro en `analysis-worker.js`)
+
+1.  **Recepción de la Vela:** `app.js` recibe la vela cerrada del `pip-worker` y la reenvía inmediatamente al `analysis-worker`.
+2.  **Gestión de Canales (`ChannelManager.js`):** Dentro del `analysis-worker`, el `ChannelManager` recibe la vela. Su trabajo es dirigirla al lugar correcto. Mira el activo de la vela (ej. `EURUSD_otc`) y busca si ya existe un `TradingChannel` para ese activo. Si no, crea uno nuevo.
+3.  **Aislamiento por Canal:** El `ChannelManager` pasa la vela al `TradingChannel` correspondiente. Esto asegura que el análisis de `EURUSD_otc` esté completamente aislado del de `USDJPY_otc`, por ejemplo.
+
+### Paso 5: El Motor Híbrido (`IndicatorEngine.js` v4.0)
+
+Aquí ocurre la magia. El `TradingChannel` pasa la vela a su instancia del `IndicatorEngine`.
+
+1.  **Doble Actualización:** El motor recibe TODAS las velas.
+    *   Si es una vela de `5s`, actualiza su indicador **Táctico** (un RSI rápido que mide el momentum inmediato).
+    *   Si es una vela de `1m`, `5m` o `15m`, actualiza sus indicadores **Estratégicos** (Acción de Precio, RSI, Estocástico de largo plazo).
+2.  **Disparo de Decisión:** El proceso de análisis solo se activa cuando se cierra una vela de la temporalidad de decisión (ej. `1m`).
+3.  **Análisis Estratégico:** El motor calcula una puntuación de confluencia basada en todos sus indicadores estratégicos. Esto responde a la pregunta: "¿Hay una buena oportunidad de trading en el horizonte?"
+4.  **Confirmación Táctica:** Si la puntuación estratégica es prometedora, el motor consulta el estado de su indicador táctico de 5s. Esto responde a la pregunta: "Y AHORA MISMO, ¿el precio se está moviendo en la dirección que mi estrategia sugiere?"
+5.  **Señal Técnica:** Solo si ambas capas están alineadas (la estrategia es buena y el momentum inmediato la confirma), el motor emite una `señalTecnica`.
+
+### Paso 6: El Guardián de la Inteligencia (`Humanizer.js`)
+
+1.  **Recepción de la Señal:** El `ChannelManager` captura la `señalTecnica` emitida por el `IndicatorEngine` y la pasa inmediatamente al `Humanizer`.
+2.  **Focus Funnel (Embudo de Enfoque):** El `Humanizer` no actúa de inmediato. Recibe todas las señales prometedoras de todos los canales y las guarda en un buffer durante un corto período de tiempo (2 segundos).
+3.  **Decisión Inteligente:** Pasado ese tiempo, analiza todas las oportunidades en el buffer, les asigna una puntuación de "interés" y elige la **mejor y única** señal.
+4.  **Veredicto Final:** Emite una `decisionFinal` con la propiedad `approved: true` o `approved: false`. Si no se aprueba, la señal muere aquí.
+
+### Paso 7: La Ejecución (`Operator.js`)
+
+1.  **Luz Verde:** El `analysis-worker` recibe la `decisionFinal` aprobada, y la envía de vuelta a `app.js`.
+2.  **Orden de Ejecución:** `app.js` pasa la señal final al `Operator`.
+3.  **Ejecución de la Orden:** El `Operator` es el que actúa. Llama al `BrokerConnector` y le dice "Ejecuta esta operación".
+
+### Paso 8: La Comunicación con el Mundo Exterior (`Connectors`)
+
+1.  **`BrokerConnector.js`:** Este módulo sabe cómo "hablar" con el broker. Formatea la orden de trading en el formato que el broker espera y la envía a través del WebSocket de la página `main`.
+2.  **`TelegramConnector.js`:** Simultáneamente, el `Operator` le dice al `TelegramConnector` que envíe un mensaje a tu canal de Telegram para notificarte de la operación que se acaba de realizar.
+
+---
+
+## Conclusión
+
+Cada componente tiene una responsabilidad única y bien definida. El uso de workers para tareas pesadas y un flujo de eventos claro permite que el bot sea rápido, reactivo y escalable. La lógica de análisis híbrido del `IndicatorEngine v4.0` es el núcleo de su inteligencia, diseñada para operar con alta precisión en mercados volátiles.

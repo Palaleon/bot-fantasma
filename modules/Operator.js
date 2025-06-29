@@ -1,8 +1,10 @@
 import logger from '../utils/logger.js';
 import config from '../config/index.js';
+import { EventEmitter } from 'events';
 
-class Operator {
+class Operator extends EventEmitter {
   constructor(brokerConnector, telegramConnector) {
+    super();
     this.brokerConnector = brokerConnector;
     this.telegramConnector = telegramConnector;
   }
@@ -30,6 +32,15 @@ class Operator {
       amount: investment,
       action: action,
       time: 5,
+    });
+
+    // Emitir evento de operación ejecutada para el SocketExporter
+    this.emit('tradeExecuted', {
+      timestamp: Date.now(),
+      asset: asset,
+      action: action,
+      investment: investment,
+      signal: signal // Incluir la señal original para contexto
     });
   }
 

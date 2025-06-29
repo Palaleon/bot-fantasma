@@ -29,11 +29,6 @@ class PipReceiver extends EventEmitter {
     this.isRunning = false;
     this.currentAsset = null;
     
-    // CandleBuilder para construir velas
-    this.candleBuilder = new CandleBuilder((closedCandle) => {
-      this.emit('velaCerrada', closedCandle);
-    });
-    
     // Estadísticas
     this.stats = {
       pipsReceived: 0,
@@ -67,10 +62,23 @@ class PipReceiver extends EventEmitter {
   }
 
   _setupEventListeners() {
-    // ... (listeners existentes)
+    logger.info('[PipReceiver] Configurando listeners para el WebSocketInterceptor...');
+    
+    this.wsInterceptor.on('pip', (pipData) => {
+      // logger.info(`[PipReceiver] Evento 'pip' recibido: ${JSON.stringify(pipData)}`);
+      this._handlePip(pipData);
+    });
+
+    this.wsInterceptor.on('assetChanged', (assetData) => {
+      logger.info(`[PipReceiver] Evento 'assetChanged' recibido: ${JSON.stringify(assetData)}`);
+      this._handleAssetChange(assetData);
+    });
+
     this.wsInterceptor.on('tradeResult', (resultData) => {
       this.emit('tradeResult', resultData);
     });
+
+    logger.info('[PipReceiver] Listeners configurados.');
   }
 
   _handlePip(pipData) {
@@ -130,14 +138,12 @@ class PipReceiver extends EventEmitter {
     this.reportInterval = setInterval(() => {
       const uptime = (Date.now() - this.stats.startTime) / 1000;
       const pipsPerSecond = this.stats.pipsReceived / uptime;
-      const wsStats = this.wsInterceptor.getStats();
       
       logger.info('📊 === REPORTE PIPRECEIVER ===');
       logger.info(`⏱️  Uptime: ${Math.floor(uptime / 60)} minutos`);
       logger.info(`📈 Pips recibidos: ${this.stats.pipsReceived}`);
       logger.info(`⚡ Velocidad: ${pipsPerSecond.toFixed(2)} pips/segundo`);
       logger.info(`🎯 Activo actual: ${this.stats.currentAsset || 'N/A'}`);
-      logger.info(`📊 WebSocket - Válidos: ${wsStats.validPips} | Inválidos: ${wsStats.invalidPips}`);
       logger.info('📊 === FIN REPORTE ===');
       
     }, 60000); // Cada minuto

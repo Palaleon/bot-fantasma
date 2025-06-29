@@ -14,6 +14,7 @@ dotenv.config();
  * @property {object} telegram
  * @property {string} telegram.botToken
  * @property {string} telegram.chatId
+ * @property {number} socketExportPort
  */
 
 /**
@@ -57,7 +58,10 @@ const config = {
   puppeteer: {
     // Puerto para conectar con una instancia de Chrome existente
     debuggingPort: parseInt(process.env.PUPPETEER_DEBUGGING_PORT, 10) || 9222,
-  }
+  },
+
+  // Configuración del servidor de exportación de sockets
+  socketExportPort: parseInt(process.env.SOCKET_EXPORT_PORT, 10) || 3000,
 };
 
 export default config;

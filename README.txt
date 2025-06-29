@@ -1,47 +1,80 @@
-?? Bot Fantasma v2.1 - Plataforma de Trading Inteligente Multi-Canal con WebSocket NativoBot de trading aut¨®nomo que intercepta directamente el WebSocket del broker para m¨¢xima velocidad y fiabilidad, sin dependencias externas.?? ACTUALIZACI¨®N v2.1 - WebSocket NativoNuevas Caracter¨ªsticas:WebSocketInterceptor: Interceptaci¨®n nativa del protocolo del broker.Sin Python: 100% JavaScript/Node.js.Latencia Ultra-baja: ~1ms (antes ~10ms con TCP).Sin Procesos Externos: Un ¨²nico proceso Node.js.Arquitectura Simplificada: Menos componentes, menos puntos de falla.Arquitectura Actual:graph TD
-    A[WebSocket Broker] -->|Binary Protocol| B[WebSocketInterceptor]
-    B -->|Pips| C[PipReceiver]
-    C -->|Candles| D[ChannelManager]
-    D -->|Trading Channels| E[TradingChannel]
-    E -->|Signals| F[Operator]
-    F -->|Orders| G[BrokerConnector]
-    F -->|Notifications| H[TelegramConnector]
-?? Estructura de Archivos/bot-fantasma
-©À©¤©¤ /config/                  # Gesti¨®n de configuraci¨®n centralizada
-©À©¤©¤ /src/
-©¦   ©À©¤©¤ /connectors/          # Conectores (Broker, Telegram)
-©¦   ©À©¤©¤ /logic/               # L¨®gica de negocio (CandleBuilder)
-©¦   ©À©¤©¤ /modules/             # Componentes principales
-©¦   ©¦   ©À©¤©¤ WebSocketInterceptor.js # [NUEVO] Interceptor nativo
-©¦   ©¦   ©À©¤©¤ ChannelManager.js      # Coordinador de canales
-©¦   ©¦   ©À©¤©¤ TradingChannel.js      # Pipeline por activo
-©¦   ©¦   ©À©¤©¤ PipReceiver.js         # Receptor de pips (refactorizado)
-©¦   ©¦   ©À©¤©¤ IndicatorEngine.js     # An¨¢lisis t¨¦cnico
-©¦   ©¦   ©À©¤©¤ Humanizer.js           # Anti-detecci¨®n
-©¦   ©¦   ©¸©¤©¤ Operator.js            # Ejecutor de operaciones
-©¦   ©¸©¤©¤ /utils/               # Utilidades (Logger, TimeUtils)
-©¦
-©À©¤©¤ .env.example              # Plantilla de configuraci¨®n
-©À©¤©¤ .gitignore               
-©À©¤©¤ app.js                    # Entrada principal
-©¸©¤©¤ package.json              # Dependencias
-??? Instalaci¨®n y Configuraci¨®nRequisitos:Node.js v18+Chrome/Chromium con flag --remote-debugging-port=9222Pasos:Clonar el repositorio:git clone https://github.com/Palaleon/bot-fantasma.git
-cd bot-fantasma
-Instalar dependencias:npm install
-Configurar variables de entorno:cp .env.example .env
-# Editar .env con tus credenciales
-Iniciar Chrome con debugging:# Windows
-"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222
+## Bot Fantasma v4.0 - Plataforma de Trading HÃ­brida de Alta Frecuencia
 
-# Linux/Mac
-google-chrome --remote-debugging-port=9222
-Ejecutar el bot:npm start
-? Caracter¨ªsticas PrincipalesWebSocket NativoInterceptaci¨®n directa del protocolo binario del broker.Decodificaci¨®n as¨ªncrona sin bloquear el bot principal.Procesamiento en tiempo real con latencia m¨ªnima.Sistema Multi-CanalArquitectura preparada para m¨²ltiples activos simult¨¢neos.Cada canal con su propio pipeline de an¨¢lisis.Aislamiento de fallos entre canales.Indicadores T¨¦cnicosEMA (Exponential Moving Average) con cruces.Sistema extensible para m¨¢s indicadores.An¨¢lisis por temporalidad (1m, 5m, 15m).Sistema Anti-Detecci¨®nSimulaci¨®n de comportamiento humano.Delays y acciones aleatorias.L¨ªmites de operaciones consecutivas.?? Monitoreo y M¨¦tricasEl bot genera reportes autom¨¢ticos cada minuto con:Pips procesados por segundo.Estado de cada canal de trading.Se?ales generadas y aprobadas.Estad¨ªsticas del WebSocket.Comandos de Debug en Consola:// Ver estado del sistema
-bot.getSystemStatus()
+Bot de trading autÃ³nomo que utiliza una arquitectura de anÃ¡lisis hÃ­brida (EstratÃ©gico-TÃ¡ctico) para maximizar la precisiÃ³n de las seÃ±ales. Intercepta directamente el WebSocket del broker para una latencia mÃ­nima y opera en un sistema multicanal concurrente.
 
-// Ver estad¨ªsticas del WebSocket
-bot.wsInterceptor.getStats()
+### Arquitectura HÃ­brida v4.0
 
-// Activar modo multi-canal
-bot.channelManager.setMultiChannelMode(true)
-?? Migraci¨®n desde v2.0La migraci¨®n es autom¨¢tica. Simplemente:Actualizar el c¨®digo.Eliminar pip_analyzer_bot.py y tcp_server.js.Reiniciar el bot.Cambios importantes:Ya NO se necesita ejecutar el analizador Python.El bot captura pips directamente del navegador.Configuraciones TCP eliminadas del .env.?? RendimientoComparaci¨®n v2.0 vs v2.1:M¨¦tricav2.0 (TCP+Python)v2.1 (WebSocket Nativo)MejoraLatencia~10ms~1ms90% ?CPU100%60%40% ?RAM1GB500MB50% ?Procesos2150% ??? Soluci¨®n de ProblemasEl bot no captura pips:Verificar que Chrome est¨¦ en modo --remote-debugging-port=9222.Recargar la p¨¢gina del broker.Verificar en consola: bot.wsInterceptor.getStats()Error de conexi¨®n:El bot se conecta autom¨¢ticamente al navegador abierto.No requiere configuraci¨®n adicional de puertos.??? Roadmap[ ] v2.2: Indicadores adicionales (RSI, Bollinger Bands).[ ] v2.3: Machine Learning para predicci¨®n.[ ] v2.4: Dashboard web en tiempo real.[ ] v3.0: Soporte para m¨²ltiples brokers.?? LicenciaUNLICENSED - C¨®digo propietario.?? ContribucionesEste es un proyecto privado. Para contribuir, contactar al equipo de desarrollo.Bot Fantasma v2.1 - Trading inteligente con tecnolog¨ªa WebSocket nativa ??
+El nÃºcleo del bot es el **IndicatorEngine v4.0**, que funciona en dos capas:
+
+1.  **Capa EstratÃ©gica:** Analiza velas de largo plazo (1m, 5m, 15m) para identificar la tendencia general del mercado y las oportunidades de alta probabilidad.
+2.  **Capa TÃ¡ctica:** Utiliza velas de alta frecuencia (5s) para medir el "momentum" inmediato del mercado. Una seÃ±al estratÃ©gica solo se aprueba si el momentum tÃ¡ctico confirma la direcciÃ³n, filtrando eficazmente las malas entradas.
+
+**Flujo de Datos:**
+
+```mermaid
+graph TD
+    A[WebSocket Broker] -->|Pips| B(PipReceiver)
+    B --> C{pip-worker}
+    C -->|Velas (5s, 1m, 5m, 15m)| D{analysis-worker}
+    D --> E[ChannelManager]
+    E --> F[TradingChannel por Activo]
+    F --> G[IndicatorEngine v4.0 HÃ­brido]
+    G --> H[Humanizer]
+    H --> I[Operator]
+    I --> J[BrokerConnector]
+    I --> K[TelegramConnector]
+```
+
+### Estructura del Proyecto
+
+```
+/bot-fantasma
+â”œâ”€â”€ /config/              # ConfiguraciÃ³n centralizada
+â”œâ”€â”€ /connectors/          # Conectores (Broker, Telegram)
+â”œâ”€â”€ /logic/               # LÃ³gica de negocio y workers
+â”‚   â”œâ”€â”€ analysis-worker.js  # Worker para el anÃ¡lisis de seÃ±ales
+â”‚   â”œâ”€â”€ pip-worker.js       # Worker para la construcciÃ³n de velas
+â”‚   â””â”€â”€ CandleBuilder.js    # LÃ³gica de construcciÃ³n de velas
+â”œâ”€â”€ /modules/             # Componentes principales del bot
+â”‚   â”œâ”€â”€ IndicatorEngine.js  # [v4.0] Motor de anÃ¡lisis hÃ­brido
+â”‚   â”œâ”€â”€ ChannelManager.js   # Gestor de canales de trading
+â”‚   â”œâ”€â”€ Humanizer.js        # Capa de "sentido comÃºn" y anti-detecciÃ³n
+â”‚   â”œâ”€â”€ Operator.js         # Ejecutor de operaciones
+â”‚   â””â”€â”€ ...               # Otros mÃ³dulos de soporte
+â”œâ”€â”€ /utils/               # Utilidades (Logger, StateManager, TimeUtils)
+â”œâ”€â”€ app.js                # Punto de entrada principal de la aplicaciÃ³n
+â”œâ”€â”€ package.json          # Dependencias del proyecto
+â””â”€â”€ ...
+```
+
+### InstalaciÃ³n y EjecuciÃ³n
+
+**Requisitos:**
+*   Node.js v18+
+*   Una instancia de Chrome/Chromium ejecutÃ¡ndose con el flag `--remote-debugging-port=9222`
+
+**Pasos:**
+
+1.  **Clonar el repositorio:**
+    ```bash
+    git clone https://github.com/Palaleon/bot-fantasma.git
+    cd bot-fantasma
+    ```
+2.  **Instalar dependencias:**
+    ```bash
+    npm install
+    ```
+3.  **Iniciar Chrome con el puerto de depuraciÃ³n:**
+    *   **Windows:** `"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222`
+    *   **Linux/Mac:** `google-chrome --remote-debugging-port=9222`
+4.  **Iniciar el bot:**
+    ```bash
+    npm start
+    ```
+
+### Roadmap Futuro
+
+- [ ] **OptimizaciÃ³n TÃ¡ctica:** Usar el flujo de pips en tiempo real para la ejecuciÃ³n de Ã³rdenes (actualmente se usa para construir velas).
+- [ ] **Dashboard Web:** Crear una interfaz web para monitorear el estado del bot en tiempo real.
+- [ ] **Machine Learning:** Integrar un modelo de ML para la ponderaciÃ³n dinÃ¡mica de indicadores.
+- [ ] **Soporte Multi-Broker:** Abstraer la lÃ³gica de conexiÃ³n para soportar mÃºltiples brokers.

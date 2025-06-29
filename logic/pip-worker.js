@@ -8,6 +8,7 @@ parentPort.on('message', (message) => {
 
   if (type === 'start') {
     candleBuilder = new CandleBuilder((closedCandle) => {
+      // logger.warn(`[DEBUG-AUDIT] pip-worker: Enviando vela cerrada: ${closedCandle.asset} | ${closedCandle.timeframe}`);
       parentPort.postMessage({ type: 'candleClosed', data: closedCandle });
     });
     parentPort.postMessage({ type: 'started' });

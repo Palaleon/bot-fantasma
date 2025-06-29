@@ -14,6 +14,8 @@ import Operator from './modules/Operator.js';
 import BrokerConnector from './connectors/BrokerConnector.js';
 import TelegramConnector from './connectors/TelegramConnector.js';
 import { Worker } from 'worker_threads';
+import SocketExporter from './modules/SocketExporter.js';
+import { logEmitter } from './utils/logger.js';
 
 puppeteer.use(StealthPlugin());
 
@@ -24,6 +26,7 @@ class TradingBotFantasma {
     this.auditPage = null;
     this.wsInterceptorMain = null;
     this.wsInterceptorAudit = null;
+    this.socketExporter = null; // Nuevo: Servidor de exportación de sockets
     // ... el resto de las propiedades
   }
 
@@ -69,33 +72,80 @@ class TradingBotFantasma {
       this.pipReceiver = new PipReceiver(this.wsInterceptorAudit);
       this.pipWorker = new Worker('./logic/pip-worker.js');
       this.analysisWorker = new Worker('./logic/analysis-worker.js');
+      this.socketExporter = new SocketExporter(config.socketExportPort); // Instanciar SocketExporter
 
-      logger.info('🔗 Conectando el flujo de datos...');
-      this.pipReceiver.on('pip', (pipData) => { this.pipWorker.postMessage({ type: 'pip', data: pipData }); });
-      this.pipWorker.on('message', (msg) => { if (msg.type === 'candleClosed') this.analysisWorker.postMessage({ type: 'candle', data: msg.data }); });
-      this.analysisWorker.on('message', (msg) => { if (msg.type === 'signal') this.operator.executeApprovedTrade(msg.data); });
+      logger.info('🔗 Conectando el flujo de datos y arrancando workers...');
 
-      // --- FLUJO DE INICIALIZACIÓN CORRECTO ---
+      // Arrancar workers y esperar su confirmación
+      const workersReady = Promise.all([
+        new Promise(resolve => {
+          this.pipWorker.on('message', (msg) => { if (msg.type === 'started') resolve(); });
+          this.pipWorker.postMessage({ type: 'start' });
+        }),
+        new Promise(resolve => {
+          this.analysisWorker.on('message', (msg) => { if (msg.type === 'started') resolve(); });
+          this.analysisWorker.postMessage({ type: 'start' });
+        })
+      ]);
+
+      await workersReady;
+      logger.info('✅ Workers de Pips y Análisis listos.');
+
+      // Configurar el pipeline de datos entre los componentes
+      this.pipReceiver.on('pip', (pipData) => {
+        this.pipWorker.postMessage({ type: 'pip', data: pipData });
+        this.socketExporter.broadcast({ type: 'pip', data: pipData }); // Exportar pips
+      });
+      
+      this.pipWorker.on('message', (msg) => {
+        if (msg.type === 'candleClosed') {
+          // logger.warn(`[DEBUG-AUDIT] app.js: Recibida vela de pip-worker. Enviando a analysis-worker...`);
+          this.analysisWorker.postMessage({ type: 'candle', data: msg.data });
+        }
+      });
+
+      this.analysisWorker.on('message', (msg) => { 
+        if (msg.type === 'signal') {
+          this.operator.executeApprovedTrade(msg.data);
+        }
+      });
+
+      // Exportar logs importantes
+      logEmitter.on('log', (logData) => {
+        if (logData.level === 'warn' || logData.level === 'error') { // Solo logs de advertencia y error
+          this.socketExporter.broadcast({ type: 'log', data: logData });
+        }
+      });
+
+      // Exportar operaciones tomadas
+      this.operator.on('tradeExecuted', (tradeData) => {
+        this.socketExporter.broadcast({ type: 'trade', data: tradeData });
+      });
+
       logger.info('🔧 Preparando la intercepción en ambas páginas...');
 
-      // 1. Crear la página de auditoría en blanco
+      // 1. Instalar interceptor de INYECCIÓN en la página principal.
+      await this.wsInterceptorMain.initialize(this.page, 'wss://ws2.qxbroker.com/socket.io/');
+
+      // 2. Crear una nueva página para la auditoría en el contexto existente.
       this.auditPage = await this.browser.newPage();
+      logger.info('✅ Página de auditoría creada.');
 
-      // 2. Instalar AMBOS interceptores ANTES de recargar/navegar
-      await this.wsInterceptorMain.initialize(this.page, 'wss://ws.qxbroker.com/socket.io/');
-      await this.wsInterceptorAudit.initialize(this.auditPage, 'wss://ws.qxbroker.com/socket.io/');
-      logger.info('✅ Interceptores instalados y listos.');
+      // 3. Navegar a la URL del broker. Las cookies de sesión ya están disponibles.
+      await this.auditPage.goto(config.broker.url, { waitUntil: 'networkidle2' });
+      logger.info('✅ Página de auditoría navegada.');
 
-      // 3. Recargar la página principal y navegar la de auditoría SIMULTÁNEAMENTE
-      logger.info('🔄 Recargando/Navegando páginas para forzar la captura del WebSocket...');
-      await Promise.all([
-        this.page.reload({ waitUntil: 'networkidle2' }),
-        this.auditPage.goto(config.broker.url, { waitUntil: 'networkidle2' })
-      ]);
-      logger.info('✅ Ambas páginas cargadas con la intercepción activa.');
+      // 4. Instalar interceptor NATIVO en la página de auditoría ya cargada.
+      await this.wsInterceptorAudit.initialize(this.auditPage, 'wss://ws2.qxbroker.com/socket.io/', { method: 'native' });
 
-      // 4. Iniciar el receptor de pips
+      // 6. Iniciar el receptor de pips.
       this.pipReceiver.start();
+      logger.info('✅ Receptor de pips iniciado y escuchando.');
+
+      // 7. Iniciar el servidor de exportación de sockets.
+      this.socketExporter.start();
+
+      logger.info('✅ Arquitectura construida e iniciada con éxito.');
 
       logger.info('✅ Arquitectura construida e iniciada con éxito.');
 
@@ -117,6 +167,7 @@ class TradingBotFantasma {
       if (this.wsInterceptorAudit) this.wsInterceptorAudit.stop();
       if (this.pipWorker) await this.pipWorker.terminate();
       if (this.analysisWorker) await this.analysisWorker.terminate();
+      if (this.socketExporter) this.socketExporter.stop(); // Detener el exportador
       if (this.browser) await this.browser.close();
       logger.info('✅ Bot Fantasma detenido correctamente');
     } catch (error) {

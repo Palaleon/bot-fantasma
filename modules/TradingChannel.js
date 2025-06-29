@@ -60,7 +60,8 @@ class TradingChannel extends EventEmitter {
   }
 
   processCandle(candle) {
-    // ... (misma lógica de processCandle, sin cambios)
+    // logger.warn(`[DEBUG-AUDIT] TradingChannel [${this.asset}]: Recibida vela ${candle.timeframe}. Pasando a IndicatorEngine.`);
+    this.indicatorEngine.analyzeCandle(candle);
   }
 
   // ... (resto de métodos de utilidad como getMetrics, stop, etc. sin la lógica del Humanizer)

@@ -16,7 +16,9 @@ parentPort.on('message', (message) => {
       // Enviamos la señal de vuelta al hilo principal para su ejecución.
       parentPort.postMessage({ type: 'signal', data: finalSignal });
     });
+    parentPort.postMessage({ type: 'started' });
   } else if (type === 'candle') {
+    // logger.warn(`[DEBUG-AUDIT] analysis-worker: Recibida vela. Pasando a ChannelManager...`);
     if (channelManager) channelManager.processCandle(data);
   } else if (type === 'getState') {
     // Responde al hilo principal con el estado actual del Humanizer.

@@ -12,23 +12,36 @@ class BrokerConnector {
       const orderPayload = {
         asset: asset,
         amount: amount,
-        action: action,
-        time: time,
-        isDemo: 1,
+        action: action, // "call" o "put"
+        time: time, // Duración en minutos
+        isDemo: 1, // O 0 para real
         tournamentId: 0,
-        optionType: 100,
+        optionType: 100, // Opciones binarias
       };
 
-      const message = `42["trade", ${JSON.stringify(orderPayload)}]`;
-      const sent = this.wsInterceptor.send(message);
+      const message = `42["trade",${JSON.stringify(orderPayload)}]`;
+      logger.info(`BrokerConnector: Payload a enviar: ${message}`);
 
-      if (sent) {
-        logger.warn(`BrokerConnector: ¡ORDEN ENVIADA! Mensaje: ${message}`);
+      const result = await this.page.evaluate((payload) => {
+        if (window.qxMainSocket && window.qxMainSocket.readyState === 1) { // 1 = OPEN
+          window.qxMainSocket.send(payload);
+          return { success: true, message: 'Orden enviada al socket.' };
+        } else {
+          return { success: false, error: 'El socket de trading no está disponible o no está abierto.' };
+        }
+      }, message);
+
+      if (result.success) {
+        logger.warn(`✅ BrokerConnector: ¡ORDEN ENVIADA! ${result.message}`);
       } else {
-        logger.error('BrokerConnector: Fallo al enviar orden. El socket no estaba listo.');
+        logger.error(`❌ BrokerConnector: Fallo al enviar orden. Motivo: ${result.error}`);
       }
+
+      return result;
+
     } catch (error) {
-      logger.error(`BrokerConnector: Error crítico al intentar ejecutar la operación: ${error.message}`);
+      logger.error(`BrokerConnector: Error crítico al intentar ejecutar la operación: ${error.stack}`);
+      return { success: false, error: error.message };
     }
   }
 }

@@ -1,0 +1,270 @@
+# Exportación de Datos en Tiempo Real para Visualización Externa
+
+Este documento detalla cómo conectar una aplicación externa al Bot Fantasma para recibir un flujo de datos en tiempo real y utilizarlos para recrear gráficos de velas u otras visualizaciones.
+
+## 1. Propósito de la Exportación
+
+El Bot Fantasma expone un servidor de Sockets TCP que permite a clientes externos suscribirse a un flujo continuo de eventos clave del bot. Esto es ideal para:
+
+*   **Monitoreo en Tiempo Real:** Observar el pulso del mercado (pips), los logs importantes y las operaciones ejecutadas.
+*   **Visualización de Datos:** Recrear gráficos de velas, indicadores o cualquier otra representación visual del comportamiento del bot y del mercado.
+*   **Integración con Otros Sistemas:** Alimentar bases de datos, sistemas de alertas o dashboards personalizados.
+
+## 2. Conexión al Servidor de Exportación
+
+El bot inicia un servidor TCP que escucha en un puerto específico. Por defecto, este puerto es `3000`, pero puede ser configurado en `config/index.js` bajo la propiedad `socketExportPort`.
+
+### Dirección y Puerto
+
+*   **Dirección:** La dirección IP de la máquina donde se ejecuta el Bot Fantasma.
+*   **Puerto:** `3000` (por defecto).
+
+### Herramientas Básicas de Conexión
+
+Puedes probar la conexión y ver el flujo de datos usando herramientas de línea de comandos como `netcat` (o `nc`):
+
+```bash
+nc <DIRECCION_IP_DEL_BOT> 3000
+```
+
+Por ejemplo, si el bot se ejecuta en tu misma máquina:
+
+```bash
+nc localhost 3000
+```
+
+Verás un flujo constante de objetos JSON.
+
+### Ejemplo de Código Cliente (Node.js)
+
+Para una aplicación programática, puedes usar el módulo `net` de Node.js:
+
+```javascript
+const net = require('net');
+
+const client = new net.Socket();
+
+client.connect(3000, 'localhost', () => {
+    console.log('Conectado al servidor del Bot Fantasma!');
+});
+
+let buffer = '';
+client.on('data', (data) => {
+    buffer += data.toString();
+    let newlineIndex;
+    while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+        const message = buffer.substring(0, newlineIndex);
+        buffer = buffer.substring(newlineIndex + 1);
+        try {
+            const parsedData = JSON.parse(message);
+            // console.log('Datos recibidos:', parsedData);
+            // Aquí procesar parsedData
+            handleBotData(parsedData);
+        } catch (e) {
+            console.error('Error al parsear JSON:', e.message, 'Mensaje crudo:', message);
+        }
+    }
+});
+
+client.on('close', () => {
+    console.log('Conexión cerrada.');
+});
+
+client.on('error', (err) => {
+    console.error('Error de conexión:', err.message);
+});
+
+function handleBotData(data) {
+    switch (data.type) {
+        case 'pip':
+            // console.log('PIP:', data.data.rawAsset, data.data.price);
+            // Aquí se procesan los pips para construir velas
+            break;
+        case 'log':
+            // console.log('LOG:', data.data.level.toUpperCase(), data.data.message);
+            break;
+        case 'trade':
+            // console.log('OPERACION:', data.data.asset, data.data.action, data.data.investment);
+            break;
+        default:
+            console.log('Tipo de dato desconocido:', data.type);
+    }
+}
+
+// Para mantener la conexión abierta en un script simple
+process.stdin.resume();
+```
+
+## 3. Formato de los Datos Exportados
+
+Cada mensaje enviado a través del socket es un objeto JSON válido, seguido de un carácter de nueva línea (`\n`). Esto permite que el cliente lea los mensajes uno por uno.
+
+Todos los objetos JSON tienen una propiedad `type` que indica el tipo de evento, y una propiedad `data` que contiene la información relevante.
+
+### Tipos de Datos Exportados:
+
+1.  **`type: 'pip'`**
+    *   **Descripción:** Representa un cambio de precio individual para un activo.
+    *   **`data` estructura:**
+        ```json
+        {
+            "price": 1.12345,        // Precio del pip
+            "rawAsset": "EURUSD_otc", // Nombre del activo (identificador interno)
+            "displayAsset": "EUR/USD (OTC)", // Nombre del activo para mostrar
+            "timestamp": 1678886400123 // Timestamp del broker en milisegundos
+        }
+        ```
+
+2.  **`type: 'log'`**
+    *   **Descripción:** Logs importantes del bot (nivel `warn` o `error`).
+    *   **`data` estructura:**
+        ```json
+        {
+            "level": "warn",         // Nivel del log (warn, error)
+            "message": "[DEBUG-AUDIT] app.js: Recibida vela...", // Mensaje del log
+            "timestamp": "2025-06-28 15:47:57.819" // Timestamp del log
+        }
+        ```
+
+3.  **`type: 'trade'`**
+    *   **Descripción:** Información sobre una operación que el bot ha ejecutado.
+    *   **`data` estructura:**
+        ```json
+        {
+            "timestamp": 1678886400500, // Timestamp de la ejecución
+            "asset": "EURUSD_otc",     // Activo de la operación
+            "action": "call",          // Dirección (call/put, o green/red)
+            "investment": 10,          // Monto invertido
+            "signal": { ... }          // Objeto de señal original (para contexto)
+        }
+        ```
+
+## 4. Reconstrucción de Velas en la Aplicación Cliente
+
+**Punto Crucial:** El bot exporta **pips crudos**, no velas pre-construidas. Esto te da la flexibilidad de construir velas de cualquier temporalidad que necesites en tu aplicación cliente (1s, 5s, 10s, 1m, etc.).
+
+Para recrear las velas, tu aplicación cliente necesitará implementar una lógica similar a la del `CandleBuilder` interno del bot.
+
+### Utilidades Necesarias
+
+```javascript
+// Mapeo de duraciones de velas en milisegundos
+const TIMEFRAMES = {
+    '1s': 1 * 1000,
+    '5s': 5 * 1000,
+    '10s': 10 * 1000,
+    '1m': 60 * 1000,
+    '5m': 5 * 60 * 1000,
+    '15m': 15 * 60 * 1000,
+    // Puedes añadir más temporalidades aquí
+};
+
+/**
+ * Devuelve el timestamp de inicio de la vela a la que pertenece un timestamp dado.
+ * @param {number} timestamp - El timestamp en milisegundos.
+ * @param {number} durationMs - La duración de la vela en milisegundos.
+ * @returns {number} - El timestamp de inicio de la vela.
+ */
+function getCandleStartTimestamp(timestamp, durationMs) {
+    return Math.floor(timestamp / durationMs) * durationMs;
+}
+```
+
+### Lógica del `CandleBuilder` Cliente
+
+Tu aplicación cliente debe mantener un estado de las velas "activas" (las que aún no han cerrado) para cada activo y temporalidad que desees graficar.
+
+```javascript
+class ClientCandleBuilder {
+    constructor() {
+        this.activeCandles = new Map(); // Map<asset, Map<timeframe, currentCandle>>
+    }
+
+    /**
+     * Procesa un pip recibido del socket.
+     * @param {object} pipData - El objeto de datos del pip (price, rawAsset, timestamp).
+     */
+    addPip(pipData) {
+        const { rawAsset, price, timestamp } = pipData;
+
+        // 1. Comprobar y cerrar velas que ya han terminado
+        this.checkForClosedCandles(timestamp);
+
+        if (!this.activeCandles.has(rawAsset)) {
+            this.activeCandles.set(rawAsset, new Map());
+        }
+        const assetCandles = this.activeCandles.get(rawAsset);
+
+        // 2. Actualizar o crear velas para cada temporalidad deseada
+        for (const [timeframeName, durationMs] of Object.entries(TIMEFRAMES)) {
+            const candleStart = getCandleStartTimestamp(timestamp, durationMs);
+            
+            if (!assetCandles.has(timeframeName)) {
+                // Crear una nueva vela si no existe para esta temporalidad
+                const newCandle = {
+                    open: price,
+                    high: price,
+                    low: price,
+                    close: price,
+                    start: candleStart,
+                    end: candleStart + durationMs,
+                    asset: rawAsset,
+                    timeframe: timeframeName,
+                    volume: 1
+                };
+                assetCandles.set(timeframeName, newCandle);
+                // console.log(`Nueva vela ${timeframeName} para ${rawAsset} en ${new Date(candleStart).toLocaleTimeString()}`);
+            } else {
+                // Actualizar la vela existente
+                const candle = assetCandles.get(timeframeName);
+                candle.high = Math.max(candle.high, price);
+                candle.low = Math.min(candle.low, price);
+                candle.close = price;
+                candle.volume += 1;
+            }
+        }
+    }
+
+    /**
+     * Comprueba si alguna vela activa ha cerrado y la emite.
+     * @param {number} currentTimestamp - El timestamp del pip actual.
+     */
+    checkForClosedCandles(currentTimestamp) {
+        for (const [asset, assetCandles] of this.activeCandles.entries()) {
+            for (const [timeframeName, candle] of assetCandles.entries()) {
+                if (currentTimestamp >= candle.end) {
+                    // Vela cerrada, emitir/procesar
+                    // console.log(`Vela cerrada: ${asset} ${timeframeName} OHLC: ${candle.open}/${candle.high}/${candle.low}/${candle.close}`);
+                    this.emitCandleClosed(candle); // Implementa esta función para tu lógica de graficado
+                    assetCandles.delete(timeframeName); // Eliminar la vela cerrada
+                }
+            }
+        }
+    }
+
+    /**
+     * Placeholder para la lógica de tu aplicación cuando una vela cierra.
+     * Aquí es donde actualizarías tus gráficos.
+     * @param {object} candle - La vela cerrada.
+     */
+    emitCandleClosed(candle) {
+        // console.log('Vela cerrada lista para graficar:', candle);
+        // Ejemplo: Actualizar un gráfico de TradingView, Chart.js, D3.js, etc.
+        // Tu lógica de graficado iría aquí.
+    }
+}
+
+// Ejemplo de uso:
+// const candleBuilder = new ClientCandleBuilder();
+// En tu función handleBotData, cuando type === 'pip':
+//     candleBuilder.addPip(data.data);
+```
+
+## 5. Consideraciones Adicionales
+
+*   **Manejo de Desconexiones:** Tu cliente debe implementar lógica de reconexión automática en caso de que la conexión con el servidor del bot se pierda.
+*   **Buffering de Datos:** Para evitar la pérdida de datos si el procesamiento es lento, considera implementar un buffer de mensajes en el cliente.
+*   **Rendimiento de la Visualización:** Graficar cada pip o cada vela de 5s puede ser muy intensivo para el navegador. Optimiza tu lógica de renderizado para actualizar los gráficos de manera eficiente (ej. usando requestAnimationFrame, o actualizando solo cuando una vela cierra).
+*   **Seguridad:** Este servidor de sockets no implementa autenticación ni cifrado. Está diseñado para uso local o en redes de confianza. No lo expongas directamente a Internet sin medidas de seguridad adicionales (VPN, firewall, etc.).
+
+Con esta guía, cualquier programador debería ser capaz de conectar una aplicación externa y visualizar el flujo de datos del Bot Fantasma de manera efectiva.

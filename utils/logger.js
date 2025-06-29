@@ -1,9 +1,14 @@
 import winston from 'winston';
 import config from '../config/index.js';
+import { EventEmitter } from 'events';
+
+class LogEmitter extends EventEmitter {}
+const logEmitter = new LogEmitter();
 
 const { combine, timestamp, printf, colorize } = winston.format;
 
 const logFormat = printf(({ level, message, timestamp }) => {
+  logEmitter.emit('log', { level, message, timestamp }); // Emitir el log como un evento
   return `${timestamp} ${level}: ${message}`;
 });
 
@@ -19,4 +24,5 @@ const logger = winston.createLogger({
   ],
 });
 
+export { logEmitter };
 export default logger;

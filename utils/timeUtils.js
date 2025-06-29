@@ -12,6 +12,8 @@ export function getCandleStartTimestamp(timestamp, durationMs) {
  * Mapeo de duraciones de velas estándar en milisegundos.
  */
 export const TIMEFRAMES = {
+  '5s': 5 * 1000,
   '1m': 60 * 1000,
   '5m': 5 * 60 * 1000,
+  '15m': 15 * 60 * 1000,
 };

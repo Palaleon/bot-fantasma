@@ -8,36 +8,36 @@ class CandleBuilder {
   }
 
   addPip(pipData) {
-    const { raw_asset, pip, pip_timestamp_ms } = pipData;
-    this.checkForClosedCandles(pip_timestamp_ms);
+    const { rawAsset, price, timestamp } = pipData;
+    this.checkForClosedCandles(timestamp);
 
-    if (!this.activeCandles.has(raw_asset)) {
-      this.activeCandles.set(raw_asset, new Map());
+    if (!this.activeCandles.has(rawAsset)) {
+      this.activeCandles.set(rawAsset, new Map());
     }
-    const assetCandles = this.activeCandles.get(raw_asset);
+    const assetCandles = this.activeCandles.get(rawAsset);
 
     for (const [timeframe, durationMs] of Object.entries(TIMEFRAMES)) {
-      const candleStart = getCandleStartTimestamp(pip_timestamp_ms, durationMs);
+      const candleStart = getCandleStartTimestamp(timestamp, durationMs);
       
       if (!assetCandles.has(timeframe)) {
         const newCandle = {
-          open: pip,
-          high: pip,
-          low: pip,
-          close: pip,
+          open: price,
+          high: price,
+          low: price,
+          close: price,
           start: candleStart,
           end: candleStart + durationMs,
-          asset: raw_asset,
+          asset: rawAsset,
           timeframe: timeframe,
           volume: 1
         };
         assetCandles.set(timeframe, newCandle);
-        logger.debug(`[${raw_asset}|${timeframe}] Nueva vela creada. Open: ${pip}`);
+        logger.debug(`[${rawAsset}|${timeframe}] Nueva vela creada. Open: ${price}`);
       } else {
         const candle = assetCandles.get(timeframe);
-        candle.high = Math.max(candle.high, pip);
-        candle.low = Math.min(candle.low, pip);
-        candle.close = pip;
+        candle.high = Math.max(candle.high, price);
+        candle.low = Math.min(candle.low, price);
+        candle.close = price;
         candle.volume += 1;
       }
     }

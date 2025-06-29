@@ -45,11 +45,24 @@ class ChannelManager extends EventEmitter {
 
     // Escuchar señales técnicas del canal y pasarlas al Humanizer
     channel.on('señalTecnicaCanal', (signal) => {
+      // logger.warn(`[DEBUG-AUDIT] ChannelManager: Recibida señal técnica de ${signal.asset}. Pasando a Humanizer.`);
       this.humanizer.analyzeSignal(signal);
     });
 
     this.channels.set(asset, channel);
     return channel;
+  }
+
+  processCandle(candle) {
+    const { asset } = candle;
+    let channel = this.channels.get(asset);
+
+    if (!channel) {
+      logger.info(`[ChannelManager] No existe canal para ${asset}. Creando uno nuevo...`);
+      channel = this._createChannel(asset);
+    }
+
+    channel.processCandle(candle);
   }
 
   // ... (resto de los métodos sin cambios significativos)
