@@ -1,206 +1,93 @@
-/*
-================================================================================
-||                          CHANNEL WORKER v1.0                               ||
-||                    Worker Thread para Procesamiento                        ||
-================================================================================
-
-PROPÓSITO:
-Worker thread para procesamiento aislado de canales de trading.
-Actualmente deshabilitado en app.js pero listo para uso futuro.
-
-NOTA: Esta es una implementación básica para evitar errores.
-La implementación completa requiere refactoring del sistema de canales.
-================================================================================
-*/
-
-import { parentPort, workerData } from 'worker_threads';
 import { EventEmitter } from 'events';
+import logger from '../utils/logger.js';
+import IndicatorEngine from './IndicatorEngine.js';
 
-class ChannelWorkerProcessor extends EventEmitter {
-  constructor(activo) {
-    super();
-    this.activo = activo;
-    this.isRunning = false;
-    this.processedCount = 0;
-    this.lastProcessTime = Date.now();
-    
-    console.log(`[Worker ${activo}] Inicializado`);
-  }
-  
-  start() {
-    if (this.isRunning) {
-      console.log(`[Worker ${this.activo}] Ya está en ejecución`);
-      return;
+class ChannelWorker extends EventEmitter {
+    constructor(asset) {
+        super();
+        this.asset = asset;
+        this.indicatorEngine = new IndicatorEngine();
+        logger.info(`CHANNEL-WORKER: Trabajador Multi-Estratégico creado para ${asset}`);
     }
-    
-    this.isRunning = true;
-    console.log(`[Worker ${this.activo}] Iniciado`);
-    
-    // Simulación de procesamiento
-    this.processingInterval = setInterval(() => {
-      if (this.isRunning) {
-        this.processedCount++;
-        
-        // Enviar actualización al proceso principal cada 10 procesados
-        if (this.processedCount % 10 === 0) {
-          parentPort.postMessage({
-            type: 'status',
-            data: {
-              activo: this.activo,
-              processed: this.processedCount,
-              uptime: Date.now() - this.lastProcessTime,
-              timestamp: Date.now()
+
+    handleCandle(candleData) {
+        this.indicatorEngine.update(candleData);
+
+        if (this.indicatorEngine.strategicTimeframes.includes(candleData.timeframe)) {
+            const signal = this.evaluateStrategy(candleData.timeframe);
+            
+            if (signal) {
+                return {
+                    ...signal,
+                    asset: this.asset,
+                    channel: this.asset,
+                    triggeredBy: candleData.timeframe
+                };
             }
-          });
         }
-      }
-    }, 1000);
-  }
-  
-  stop() {
-    if (!this.isRunning) {
-      console.log(`[Worker ${this.activo}] Ya está detenido`);
-      return;
+
+        return null;
     }
-    
-    this.isRunning = false;
-    
-    if (this.processingInterval) {
-      clearInterval(this.processingInterval);
-      this.processingInterval = null;
-    }
-    
-    console.log(`[Worker ${this.activo}] Detenido. Total procesados: ${this.processedCount}`);
-    
-    // Notificar al proceso principal
-    parentPort.postMessage({
-      type: 'stopped',
-      data: {
-        activo: this.activo,
-        totalProcessed: this.processedCount,
-        timestamp: Date.now()
-      }
-    });
-  }
-  
-  processData(data) {
-    if (!this.isRunning) {
-      console.log(`[Worker ${this.activo}] No puede procesar - worker detenido`);
-      return;
-    }
-    
-    try {
-      // Aquí iría la lógica real de procesamiento
-      // Por ahora solo registramos
-      console.log(`[Worker ${this.activo}] Procesando datos:`, data);
-      
-      // Simular procesamiento
-      const result = {
-        activo: this.activo,
-        input: data,
-        processed: true,
-        timestamp: Date.now()
-      };
-      
-      // Enviar resultado
-      parentPort.postMessage({
-        type: 'processed',
-        data: result
-      });
-      
-    } catch (error) {
-      console.error(`[Worker ${this.activo}] Error procesando:`, error);
-      parentPort.postMessage({
-        type: 'error',
-        data: {
-          activo: this.activo,
-          error: error.message,
-          timestamp: Date.now()
+
+    evaluateStrategy(timeframe) {
+        const indicators = this.indicatorEngine.getIndicators();
+        const strategic = indicators.strategic[timeframe];
+        const tactic = indicators.tactic;
+
+        if (!strategic || !strategic.sma_fast || !strategic.sma_slow || !strategic.rsi) {
+            return null;
         }
-      });
+
+        let strategicSignal = null;
+        if (strategic.sma_fast > strategic.sma_slow && strategic.rsi < 68) {
+            strategicSignal = 'call';
+        } else if (strategic.sma_slow > strategic.sma_fast && strategic.rsi > 32) {
+            strategicSignal = 'put';
+        }
+
+        if (!strategicSignal) {
+            return null;
+        }
+        
+        logger.warn(`STRATEGY[${this.asset}][${timeframe}]: Oportunidad estratégica detectada: ${strategicSignal.toUpperCase()}`);
+
+        if (!tactic.rsi) {
+            logger.warn(`STRATEGY[${this.asset}][${timeframe}]: Oportunidad encontrada, pero esperando confirmación táctica (RSI 5s no listo).`);
+            return null;
+        }
+
+        let isTacticConfirmed = false;
+        if (strategicSignal === 'call' && tactic.rsi > 52) {
+            isTacticConfirmed = true;
+        } else if (strategicSignal === 'put' && tactic.rsi < 48) {
+            isTacticConfirmed = true;
+        }
+
+        if (!isTacticConfirmed) {
+            return null;
+        }
+        
+        const confidence = this.calculateConfidence(strategic, tactic, strategicSignal);
+        
+        logger.warn(`STRATEGY[${this.asset}][${timeframe}]: ¡CONFIRMACIÓN TÁCTICA! Generando señal ${strategicSignal.toUpperCase()} con confianza ${confidence.toFixed(2)}.`);
+
+        return {
+            decision: strategicSignal,
+            confidence: confidence,
+        };
     }
-  }
+
+    calculateConfidence(strategic, tactic, signal) {
+        let confidence = 0.5;
+        const spread = Math.abs(strategic.sma_fast - strategic.sma_slow) / strategic.sma_slow;
+
+        if (signal === 'call') {
+            confidence += (strategic.rsi - 50) / 100 + (tactic.rsi - 50) / 100 + spread * 2;
+        } else {
+            confidence += (50 - strategic.rsi) / 100 + (50 - tactic.rsi) / 100 + spread * 2;
+        }
+        return Math.max(0.5, Math.min(1.0, confidence));
+    }
 }
 
-// Crear instancia del procesador
-const processor = new ChannelWorkerProcessor(workerData.activo);
-
-// Manejar mensajes del proceso principal
-parentPort.on('message', (message) => {
-  console.log(`[Worker ${workerData.activo}] Mensaje recibido:`, message.type);
-  
-  switch (message.type) {
-    case 'start':
-      processor.start();
-      break;
-      
-    case 'stop':
-      processor.stop();
-      break;
-      
-    case 'process':
-      processor.processData(message.data);
-      break;
-      
-    case 'ping':
-      parentPort.postMessage({
-        type: 'pong',
-        data: {
-          activo: workerData.activo,
-          timestamp: Date.now()
-        }
-      });
-      break;
-      
-    default:
-      console.log(`[Worker ${workerData.activo}] Tipo de mensaje desconocido: ${message.type}`);
-  }
-});
-
-// Manejo de errores no capturados
-process.on('uncaughtException', (error) => {
-  console.error(`[Worker ${workerData.activo}] Excepción no capturada:`, error);
-  parentPort.postMessage({
-    type: 'critical_error',
-    data: {
-      activo: workerData.activo,
-      error: error.message,
-      stack: error.stack,
-      timestamp: Date.now()
-    }
-  });
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error(`[Worker ${workerData.activo}] Promesa rechazada:`, reason);
-  parentPort.postMessage({
-    type: 'critical_error',
-    data: {
-      activo: workerData.activo,
-      error: `Unhandled rejection: ${reason}`,
-      timestamp: Date.now()
-    }
-  });
-});
-
-// Notificar que el worker está listo
-parentPort.postMessage({
-  type: 'ready',
-  data: {
-    activo: workerData.activo,
-    timestamp: Date.now()
-  }
-});
-
-console.log(`[Worker ${workerData.activo}] Worker thread listo y esperando comandos`);
-
-/*
-NOTAS DE IMPLEMENTACIÓN:
-1. Este es un worker básico que evita errores si se habilita
-2. Para una implementación completa se necesita:
-   - Integración real con TradingChannel
-   - Manejo de pips específicos por activo
-   - Sincronización con ChannelManager principal
-   - Gestión de memoria compartida
-3. Actualmente está deshabilitado en app.js
-*/
+export default ChannelWorker;

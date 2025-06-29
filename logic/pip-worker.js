@@ -1,20 +1,86 @@
 import { parentPort } from 'worker_threads';
+import logger from '../utils/logger.js';
 import CandleBuilder from './CandleBuilder.js';
 
-let candleBuilder;
+logger.info('WORKER-PIP v2.0: Worker de Pips Multi-Temporalidad iniciado.');
 
-parentPort.on('message', (message) => {
-  const { type, data } = message;
+// Objeto para almacenar builders por activo y por temporalidad
+// Estructura: { "EURUSD_otc": { "5s": CandleBuilder, "1m": CandleBuilder, ... } }
+const assetBuilders = {};
 
-  if (type === 'start') {
-    candleBuilder = new CandleBuilder((closedCandle) => {
-      // logger.warn(`[DEBUG-AUDIT] pip-worker: Enviando vela cerrada: ${closedCandle.asset} | ${closedCandle.timeframe}`);
-      parentPort.postMessage({ type: 'candleClosed', data: closedCandle });
-    });
-    parentPort.postMessage({ type: 'started' });
-  } else if (type === 'pip') {
-    if (candleBuilder) {
-      candleBuilder.addPip(data);
+// Define las temporalidades que vamos a construir
+const timeframes = {
+    '5s': 5,
+    '1m': 60,
+    '5m': 300,
+    '15m': 900
+};
+
+// Función para asegurar que todos los builders de un activo existen
+const ensureAssetBuilders = (asset) => {
+  if (!assetBuilders[asset]) {
+    logger.info(`WORKER-PIP: Creando juego de CandleBuilders para nuevo activo: ${asset}`);
+    assetBuilders[asset] = {};
+    for (const [key, periodInSeconds] of Object.entries(timeframes)) {
+        const builder = new CandleBuilder(periodInSeconds);
+        builder.on('candleClosed', (candleData) => {
+            parentPort.postMessage({ 
+                type: 'candleClosed', 
+                data: { ...candleData, asset: asset, timeframe: key } // Añadimos la temporalidad
+            });
+        });
+        assetBuilders[asset][key] = builder;
     }
+  }
+};
+
+
+parentPort.on('message', (msg) => {
+  try {
+    const { type, data } = msg;
+
+    switch (type) {
+      case 'start':
+        parentPort.postMessage({ type: 'started' });
+        logger.info('WORKER-PIP v2.0: Listo y escuchando.');
+        break;
+
+      case 'pip':
+        const { rawAsset, price, timestamp } = data;
+        if (!rawAsset || price === undefined || !timestamp) return;
+        
+        ensureAssetBuilders(rawAsset);
+
+        // Alimentar el pip a todos los builders para este activo
+        for (const builder of Object.values(assetBuilders[rawAsset])) {
+            builder.addPip({ price, timestamp });
+        }
+        break;
+
+      case 'prime-current-candle':
+        const { asset, history } = data;
+        if (!asset || !history || history.length === 0) return;
+        
+        logger.warn(`WORKER-PIP: Reconstruyendo velas actuales para ${asset} con ${history.length} ticks.`);
+        ensureAssetBuilders(asset);
+        
+        const formattedTicks = history.map(tick => ({
+          timestamp: tick[0],
+          price: tick[1]
+        })).sort((a, b) => a.timestamp - b.timestamp);
+
+        // Procesar cada tick histórico en todos los builders del activo
+        for (const tick of formattedTicks) {
+            for (const builder of Object.values(assetBuilders[asset])) {
+                builder.addPip(tick, true); // `true` para modo priming
+            }
+        }
+        break;
+
+      default:
+        logger.warn(`WORKER-PIP: Mensaje de tipo desconocido recibido: ${type}`);
+    }
+  } catch (error) {
+    logger.error(`WORKER-PIP: Error fatal en el worker: ${error.stack}`);
   }
 });

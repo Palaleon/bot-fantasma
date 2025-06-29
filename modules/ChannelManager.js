@@ -1,71 +1,47 @@
-/*
-================================================================================
-||                          CHANNEL MANAGER v1.1                              ||
-||                    Sistema de Canalización Multi-Activo                    ||
-||                         WebSocket Nativo Edition                           ||
-================================================================================
-
-CAMBIOS v1.1:
-✅ Actualizado para trabajar con WebSocket nativo
-✅ Eliminadas referencias a TCP
-✅ Métricas mejoradas con información del interceptor
-✅ Sin cambios en la interfaz pública (100% compatible)
-
-ARQUITECTURA:
-WebSocketInterceptor → PipReceiver → ChannelManager → TradingChannel(es) → Operator
-
-================================================================================
-*/
-
-import { EventEmitter } from 'events';
 import logger from '../utils/logger.js';
-import TradingChannel from './TradingChannel.js';
-import Humanizer from './Humanizer.js'; // Importar Humanizer
+import ChannelWorker from './ChannelWorker.js';
 
-class ChannelManager extends EventEmitter {
-  constructor() {
-    super();
-    this.channels = new Map();
-    this.humanizer = new Humanizer(); // Instancia única y centralizada
-    // ... (misma configuración y métricas)
-    this._connectHumanizer();
-  }
-
-  _connectHumanizer() {
-    this.humanizer.on('decisionFinal', (decision) => {
-      if (decision.approved) {
-        this.emit('señalMultiCanal', decision.signal); // Propagar al Operator
-      }
-    });
-  }
-
-  _createChannel(asset) {
-    // ... (misma lógica de _createChannel)
-    const channel = new TradingChannel(asset);
-
-    // Escuchar señales técnicas del canal y pasarlas al Humanizer
-    channel.on('señalTecnicaCanal', (signal) => {
-      // logger.warn(`[DEBUG-AUDIT] ChannelManager: Recibida señal técnica de ${signal.asset}. Pasando a Humanizer.`);
-      this.humanizer.analyzeSignal(signal);
-    });
-
-    this.channels.set(asset, channel);
-    return channel;
-  }
-
-  processCandle(candle) {
-    const { asset } = candle;
-    let channel = this.channels.get(asset);
-
-    if (!channel) {
-      logger.info(`[ChannelManager] No existe canal para ${asset}. Creando uno nuevo...`);
-      channel = this._createChannel(asset);
+class ChannelManager {
+    constructor() {
+        this.channels = {}; // Almacena un ChannelWorker por cada activo.
+        logger.info('CHANNEL-MANAGER: Gestor de Canales inicializado.');
     }
 
-    channel.processCandle(candle);
-  }
+    getChannel(asset, createIfNotExist = false) {
+        if (!this.channels[asset] && createIfNotExist) {
+            logger.info(`CHANNEL-MANAGER: Creando nuevo canal de trabajo para: ${asset}`);
+            this.channels[asset] = new ChannelWorker(asset);
+        }
+        return this.channels[asset];
+    }
 
-  // ... (resto de los métodos sin cambios significativos)
+    /**
+     * Procesa una vela cerrada y la dirige al canal (y temporalidad) correcta.
+     * @param {object} candleData - La vela cerrada desde pip-worker.
+     * @returns La señal de trading si se genera una.
+     */
+    processCandle(candleData) {
+        const { asset, timeframe } = candleData;
+        
+        if (!asset || !timeframe) {
+            logger.warn('CHANNEL-MANAGER: Recibida vela sin activo o temporalidad. Descartando.');
+            return null;
+        }
+
+        const channel = this.getChannel(asset, true);
+
+        if (channel) {
+            // El ChannelWorker ahora es responsable de manejar las diferentes temporalidades.
+            const signal = channel.handleCandle(candleData);
+            
+            if (signal) {
+                logger.warn(`CHANNEL-MANAGER: ¡SEÑAL GENERADA por ${asset} en temporalidad ${timeframe}!`);
+                return signal;
+            }
+        }
+        
+        return null;
+    }
 }
 
 export default ChannelManager;
