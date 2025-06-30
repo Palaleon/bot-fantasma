@@ -1,5 +1,6 @@
 # HISTORIAL DE CAMBIOS - BOT FANTASMA
 
+<<<<<<< HEAD
 ## v4.1.1: Estabilización y Corrección Crítica - 29 de junio de 2025
 
 *   **Corrección de Errores:**
@@ -29,6 +30,25 @@
 
 ---
 
+=======
+## v4.1: La Arquitectura Híbrida Definitiva (Python-Node.js)
+
+*   **Cambio Arquitectónico Principal:** Se ha migrado a una arquitectura de dos componentes para una estabilidad 24/7 sin precedentes.
+    *   **NUEVO `harvester.py` (Los Oídos):** Un script de Python ultra-estable, basado en Playwright, cuya única misión es conectarse al navegador, interceptar los WebSockets y "cosechar" los datos del mercado (`pip` y `candles-generated`).
+    *   **Servidor TCP:** El `harvester.py` sirve estos datos a través de un servidor TCP en `localhost:8765`.
+    *   **Refactorización de Node.js (El Cerebro y Brazo):**
+        *   Se ha **eliminado `puppeteer`** como dependencia para la lectura de datos, reduciendo drásticamente la complejidad y los puntos de fallo.
+        *   **NUEVO `connectors/TCPConnector.js`:** Un cliente TCP robusto que se conecta al `harvester.py` para recibir el flujo de datos.
+        *   **ELIMINADO `modules/pipReceiver.js`:** Obsoleto gracias al nuevo conector TCP.
+        *   **INTACTO:** La lógica para inyectar trades (`BrokerConnector`, `wsInterceptorMain`) no ha sido alterada, manteniendo la capacidad de operar de forma segura.
+
+*   **Lógica de Trading (Corrección Final y Definitiva):**
+    *   **`IndicatorEngine.js`:** Re-diseñado para ser verdaderamente **Multi-Estratégico**. Ahora mantiene un conjunto de indicadores SMA y RSI para cada temporalidad estratégica (`1m`, `5m`, `15m`) de forma independiente.
+    *   **`ChannelWorker.js`:** Re-escrito para ser **Multi-Disparo**. La lógica de evaluación ahora se activa con CUALQUIER vela estratégica (`1m`, `5m`, `15m`) y busca la confirmación táctica en la capa de `5s`. Esto alinea el bot con la estrategia real multi-temporalidad.
+
+---
+
+>>>>>>> dba811d02d2d22e0ea200085ea62279714750e71
 ## v4.0: Estrategia de Doble Capa Táctica-Estratégica
 
 *   **Motor de Análisis (`IndicatorEngine.js`):**
