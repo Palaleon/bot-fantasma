@@ -1,6 +1,6 @@
 # HISTORIAL DE CAMBIOS - BOT FANTASMA
 
-## v4.1.1: Estabilización y Corrección Crítica
+## v4.1.1: Estabilización y Corrección Crítica - 29 de junio de 2025
 
 *   **Corrección de Errores:**
     *   **RESUELTO:** `SyntaxError: Unexpected end of input` y `SyntaxError: missing ) after argument list` que impedían el inicio del bot.

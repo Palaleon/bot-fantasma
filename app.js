@@ -13,38 +13,39 @@ import logger from './utils/logger.js';
 import config from './config/index.js';
 import BrokerConnector from './connectors/BrokerConnector.js';
 import TelegramConnector from './connectors/TelegramConnector.js';
-import TCPConnector from './connectors/TCPConnector.js'; // NUEVO
+import TCPConnector from './connectors/TCPConnector.js';
 import { Worker } from 'worker_threads';
 import SocketExporter from './modules/SocketExporter.js';
 import Operator from './modules/Operator.js';
 import { logEmitter } from './utils/logger.js';
-import WebSocketInterceptor from './modules/WebSocketInterceptor.js';
-
+import WebSocketInjector from './modules/WebSocketInterceptor.js';
+import Humanizer from './modules/Humanizer.js';
 
 puppeteer.use(StealthPlugin());
 
 class TradingBotFantasmaV4 {
   constructor() {
     this.browser = null;
-    this.page = null; // Página para operar
-    this.wsInterceptorMain = null;
-    this.tcpConnector = null; // Reemplaza al interceptor de auditoría
+    this.page = null;
+    this.brokerConnector = null;
+    this.tcpConnector = null;      // El Oído, escucha al Harvester.
+    this.wsInjector = null;        // El Brazo, inyecta órdenes.
+    this.humanizer = null;         // El Cerebro Estratégico.
   }
 
   async initializeBrowser() {
-    logger.info('🔌 Conectando con el navegador para OPERACIONES...');
+    logger.info('🔌 Conectando con el navegador...');
     try {
       const browserURL = `http://127.0.0.1:${config.puppeteer.debuggingPort}`;
       this.browser = await puppeteer.connect({ browserURL });
-      
       const pages = await this.browser.pages();
       this.page = pages.find(p => p.url().includes(config.broker.url));
 
       if (!this.page) {
-        logger.warn(`No se encontró página de trading. Usando la primera página disponible: ${pages[0].url()}`);
+        logger.warn(`No se encontró página de trading. Usando la primera disponible.`);
         this.page = pages[0];
       }
-      logger.info(`✅ Conectado. Página de operaciones: ${this.page.url()}`);
+      logger.info(`✅ Página de operaciones lista: ${this.page.url()}`);
     } catch (error) {
       logger.error(`❌ Error al conectar con el navegador: ${error.stack}`);
       throw error;
@@ -60,14 +61,17 @@ class TradingBotFantasmaV4 {
       await this.initializeBrowser();
 
       logger.info('🏗️  Construyendo la arquitectura de componentes...');
-      this.wsInterceptorMain = new WebSocketInterceptor('main'); // Para inyectar trades
-      this.brokerConnector = new BrokerConnector(this.page, this.wsInterceptorMain);
+      this.wsInjector = new WebSocketInjector('main');
+      await this.wsInjector.initialize(this.page); // Prepara el brazo para operar
+
+      this.brokerConnector = new BrokerConnector(this.page); // Ya no necesita el inyector en el constructor
       this.telegramConnector = new TelegramConnector();
       this.operator = new Operator(this.brokerConnector, this.telegramConnector);
+      this.humanizer = new Humanizer(); // ¡AQUÍ ESTÁ!
       this.pipWorker = new Worker('./logic/pip-worker.js');
       this.analysisWorker = new Worker('./logic/analysis-worker.js');
       this.socketExporter = new SocketExporter(config.socketExportPort);
-      this.tcpConnector = new TCPConnector(); // Nuestro nuevo oído
+      this.tcpConnector = new TCPConnector(config.harvester.port, config.harvester.host);
 
       logger.info('🔗 Conectando el flujo de datos...');
       
@@ -80,19 +84,18 @@ class TradingBotFantasmaV4 {
       await workersReady;
       logger.info('✅ Workers de Pips y Análisis listos.');
 
-      // Conectar la salida del TCP Connector a los workers
+      // Conectar la salida del TCP Connector (Oído) a los workers
       this.tcpConnector.on('pip', (payload) => {
         this.pipWorker.postMessage({ type: 'pip', data: payload });
         this.socketExporter.broadcast({ type: 'pip', data: payload });
       });
 
       this.tcpConnector.on('historical-candles', (payload) => {
-        logger.warn(`[TCP] Datos históricos para ${payload.asset} recibidos del Harvester.`);
+        logger.warn(`[APP] Datos históricos para ${payload.asset} (${payload.timeframe}s) recibidos. Enviando a workers...`);
         this.analysisWorker.postMessage({ type: 'prime-indicators', data: payload });
-        this.pipWorker.postMessage({ type: 'prime-current-candle', data: payload });
       });
 
-      // El resto del flujo de datos no cambia
+      // Flujo de lógica de trading (no cambia)
       this.pipWorker.on('message', (msg) => {
         if (msg.type === 'candleClosed') {
           this.analysisWorker.postMessage({ type: 'candle', data: msg.data });
@@ -100,7 +103,13 @@ class TradingBotFantasmaV4 {
       });
       
       this.analysisWorker.on('message', (msg) => { 
-        if (msg.type === 'signal') this.operator.executeApprovedTrade(msg.data);
+        if (msg.type === 'signal') this.humanizer.analyzeSignal(msg.data);
+      });
+
+      this.humanizer.on('decisionFinal', (decision) => {
+        if (decision.approved) {
+          this.operator.executeApprovedTrade(decision.signal);
+        }
       });
       
       this.operator.on('tradeExecuted', (tradeData) => {
@@ -115,11 +124,10 @@ class TradingBotFantasmaV4 {
 
       // Inicializar los componentes de red
       this.socketExporter.start();
-      await this.wsInterceptorMain.initialize(this.page, 'wss://ws2.qxbroker.com/socket.io/');
-      this.tcpConnector.connect();
+      this.tcpConnector.connect(); // Inicia la conexión con el Harvester
 
       logger.info('✅ Arquitectura híbrida iniciada con éxito.');
-      logger.info('👂 Escuchando datos del Harvester a través de TCP...');
+      logger.info(`👂 Escuchando datos del Harvester en ${config.harvester.host}:${config.harvester.port}...`);
       logger.info('💪 Listo para ejecutar operaciones...');
 
 
@@ -139,7 +147,7 @@ class TradingBotFantasmaV4 {
       if (this.pipWorker) await this.pipWorker.terminate();
       if (this.analysisWorker) await this.analysisWorker.terminate();
       if (this.socketExporter) this.socketExporter.stop();
-      if (this.wsInterceptorMain) this.wsInterceptorMain.stop();
+      if (this.wsInjector) this.wsInjector.stop();
       if (this.browser && this.browser.isConnected()) await this.browser.disconnect();
       logger.info('✅ Bot Fantasma detenido correctamente');
     } catch (error) {

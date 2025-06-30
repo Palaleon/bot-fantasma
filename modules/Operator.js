@@ -21,7 +21,7 @@ class Operator extends EventEmitter {
     // Esperar el retraso dinámico
     await new Promise(resolve => setTimeout(resolve, delayMs));
 
-    const finalLogMessage = `OPERATOR: ¡ORDEN DE FUEGO! Canal [${channel || 'GLOBAL'}] ejecutando ${action.toUpperCase()} en ${asset} por ${investment}`;
+    const finalLogMessage = `OPERATOR: ¡ORDEN DE FUEGO! [ID: ${signal.id}] Canal [${channel || 'GLOBAL'}] ejecutando ${action.toUpperCase()} en ${asset} por ${investment}`;
     logger.warn(finalLogMessage);
 
     const telegramMessage = `🚀 *ORDEN ENVIADA*\n\nActivo: *${asset.replace('_', '\_')}*\nDirección: *${action.toUpperCase()}*\nMonto: *${investment}*`;

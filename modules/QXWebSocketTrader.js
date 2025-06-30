@@ -1,9 +1,5 @@
 // /modules/QXWebSocketTrader.js
 
-const { v4: uuidv4 } = require('uuid'); // 💉 INYECCIÓN DE LA HERRAMIENTA FALTANTE
-
-const requestId = Math.floor(Date.now() / 1000);
-
 /**
  * @class QXWebSocketTrader
  * @description Gestiona la comunicación directa con el broker vía WebSocket.
@@ -52,7 +48,7 @@ async enviarOrden(ordenConfig) {
       throw new Error("QXWebSocketTrader: El socket no está listo para enviar órdenes.");
     }
 
-    const requestId = Math.floor(Date.now() / 1000); // ✅ ESTA ES LA LLAVE CORRECTA (genera un número de tiempo)
+    const requestId = Date.now(); // ✅ FIX: Usar timestamp de alta resolución para evitar colisiones.
     const finalConfig = { ...ordenConfig, requestId };
 
     try {

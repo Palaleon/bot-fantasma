@@ -22,7 +22,7 @@ const ensureAssetBuilders = (asset) => {
     logger.info(`WORKER-PIP: Creando juego de CandleBuilders para nuevo activo: ${asset}`);
     assetBuilders[asset] = {};
     for (const [key, periodInSeconds] of Object.entries(timeframes)) {
-        const builder = new CandleBuilder(periodInSeconds);
+        const builder = new CandleBuilder(periodInSeconds, key); // CORREGIDO: Pasar el timeframe string
         builder.on('candleClosed', (candleData) => {
             parentPort.postMessage({ 
                 type: 'candleClosed', 
@@ -46,23 +46,26 @@ parentPort.on('message', (msg) => {
         break;
 
       case 'pip':
-        const { rawAsset, price, timestamp } = data;
-        if (!rawAsset || price === undefined || !timestamp) return;
+        const { asset, price, timestamp } = data; // CORREGIDO: usar 'asset' según el formato del harvester
+        if (!asset || price === undefined || !timestamp) return;
         
-        ensureAssetBuilders(rawAsset);
+        // Log para confirmar la recepción de pips
+        logger.info(`WORKER-PIP: Recibido pip para ${asset} -> ${price}`);
+
+        ensureAssetBuilders(asset);
 
         // Alimentar el pip a todos los builders para este activo
-        for (const builder of Object.values(assetBuilders[rawAsset])) {
+        for (const builder of Object.values(assetBuilders[asset])) {
             builder.addPip({ price, timestamp });
         }
         break;
 
-      case 'prime-current-candle':
-        const { asset, history } = data;
-        if (!asset || !history || history.length === 0) return;
+      case 'prime-current-candle': {
+        const { asset: primeAsset, history } = data; // RENOMBRADO para evitar colisión
+        if (!primeAsset || !history || history.length === 0) return;
         
-        logger.warn(`WORKER-PIP: Reconstruyendo velas actuales para ${asset} con ${history.length} ticks.`);
-        ensureAssetBuilders(asset);
+        logger.warn(`WORKER-PIP: Reconstruyendo velas actuales para ${primeAsset} con ${history.length} ticks.`);
+        ensureAssetBuilders(primeAsset);
         
         const formattedTicks = history.map(tick => ({
           timestamp: tick[0],
@@ -71,11 +74,12 @@ parentPort.on('message', (msg) => {
 
         // Procesar cada tick histórico en todos los builders del activo
         for (const tick of formattedTicks) {
-            for (const builder of Object.values(assetBuilders[asset])) {
+            for (const builder of Object.values(assetBuilders[primeAsset])) {
                 builder.addPip(tick, true); // `true` para modo priming
             }
         }
         break;
+      }
 
       default:
         logger.warn(`WORKER-PIP: Mensaje de tipo desconocido recibido: ${type}`);

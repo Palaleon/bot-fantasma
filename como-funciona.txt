@@ -1,21 +1,26 @@
-Análisis Funcional y Arquitectónico del Bot Fantasma v4.0
+Análisis Funcional y Arquitectónico del Bot Fantasma v4.1 (Actualizado)
 
 Introducción:
-El Bot Fantasma v4.0 es un sistema de trading algorítmico de arquitectura híbrida, diseñado para operar en brokers con un enfoque de élite en velocidad, precisión y evasión de la detección. Su diseño separa la recolección de datos (Oído) de la lógica de trading (Cerebro) para maximizar la resiliencia y el rendimiento.
+El Bot Fantasma v4.1 es un sistema de trading algorítmico de arquitectura híbrida, diseñado para operar en brokers con un enfoque de élite en velocidad, precisión y evasión de la detección. Su diseño separa la recolección de datos (Oído) de la lógica de trading (Cerebro) para maximizar la resiliencia y el rendimiento.
 
 1. El Flujo de Datos y Decisiones (El "Sistema Nervioso")
 
 El bot opera con una arquitectura de "Cerebro" y "Oídos" desacoplados, una decisión de diseño avanzada para garantizar la recolección de datos 24/7, independientemente del estado del núcleo de trading.
 
 - El Oído (`harvester.py`): Un proceso autónomo en Python, responsable de la recolección de datos de mercado 24/7. Captura cada pip y los datos de velas históricas, los empaqueta en JSON y los transmite por un socket TCP. Esta separación es crucial: si el bot de trading se reinicia, el harvester no se detiene, evitando "huecos" en la información de mercado.
+  *   **Actualización:** Ahora incluye una pausa manual al inicio para asegurar la sincronización con el "Cerebro" antes de iniciar la extracción de datos del WebSocket.
 
 - La Conexión (`TCPConnector.js`): Actúa como el nervio auditivo del sistema. Se conecta al harvester, recibe el flujo constante de datos JSON y los traduce en eventos (`pip`, `historical-candles`) dentro del ecosistema Node.js. Su diseño con reconexión automática es vital para la resiliencia del sistema.
+  *   **Actualización:** Implementa un búfer de stream robusto para manejar la recepción de datos TCP, garantizando la integridad de los mensajes JSON y eliminando errores de parseo.
 
-- El Procesador de Datos Crudos (`pip-worker.js`): Es el primer nivel de procesamiento del cerebro. Recibe los pips individuales. Su característica única es la capacidad multi-temporalidad: utiliza múltiples instancias de `CandleBuilder` para construir simultáneamente velas de diferentes marcos de tiempo (`5s`, `1m`, `5m`, etc.) a partir de la misma fuente de pips, lo cual es extremadamente eficiente. También cuenta con una función de "Priming" para poner al día las velas en curso con datos históricos y asegurar la precisión desde el inicio.
+- El Procesador de Datos Crudos (`pip-worker.js`): Es el primer nivel de procesamiento del cerebro. Recibe los pips individuales. Su característica única es la capacidad multi-temporalidad: utiliza múltiples instancias de `CandleBuilder` para construir simultáneamente velas de diferentes marcos de tiempo (`5s`, `1m`, `5m`, `15m`) a partir de la misma fuente de pips, lo cual es extremadamente eficiente. También cuenta con una función de "Priming" para poner al día las velas en curso con datos históricos y asegurar la precisión desde el inicio.
+  *   **Actualización:** Se ha corregido para procesar correctamente los pips de reanudación y en tiempo real, asegurando que los `CandleBuilder` reciban los datos adecuados.
 
 - El Analista Estratégico (`analysis-worker.js`): El núcleo de la lógica de trading. Su componente principal, `ChannelManager.js`, crea una instancia de `IndicatorEngine` por cada activo (`channel`). Esto aísla el estado de los indicadores (RSI, MACD, etc.) por activo, evitando que uno ruidoso afecte a los demás. Utiliza una función de "Impregnación" para "calentar" los indicadores con velas históricas, asegurando que las señales iniciales sean válidas. La decisión final de trading (`signal`) se genera aquí, basándose en la lógica secreta del `IndicatorEngine`.
+  *   **Actualización:** Ahora traduce correctamente las temporalidades numéricas del `harvester` a los strings esperados por el `IndicatorEngine`, y el `IndicatorEngine` ha sido configurado para manejar todas las temporalidades estratégicas (1m, 5m, 10m, 15m, 30m).
 
 - El Ejecutor (`Operator.js`): Recibe la `signal` del analista y aplica la lógica de "humanización" antes de pasar la orden final al `BrokerConnector` para su ejecución.
+  *   **Pendiente:** La integración completa del `Humanizer.js` para que todas las señales pasen por su análisis avanzado antes de llegar al `Operator`.
 
 2. El `Humanizer` (El "Toque Fantasma Anti-Broker")
 
@@ -30,6 +35,7 @@ Implementa esta estrategia a través de:
 - Retraso de Ejecución Dinámico: Simula el tiempo de reacción humano, introduciendo un retraso variable y calculado antes de cada operación.
 - Control de Frecuencia y Conteo: Limita la cantidad de operaciones en un período y el número de trades consecutivos, evitando patrones de "ametralladora" que delatan a un bot.
 - (Implícito) Variación de Parámetros: La arquitectura permite variar montos y estrategias para no crear un patrón de comportamiento legible para el broker.
+  *   **Pendiente:** Integración completa del `Humanizer.js` en el flujo de señales para aplicar su lógica avanzada (Focus Funnel, estados emocionales, etc.) antes de la ejecución de la orden.
 
 3. Características Únicas y Decisiones de Diseño Clave
 
@@ -38,4 +44,6 @@ Implementa esta estrategia a través de:
 - Aislamiento de Estado por Activo: El `ChannelManager` proporciona una modularidad y seguridad excepcionales, impidiendo que el análisis de un activo interfiera con otro.
 - Concurrencia Real con Workers: El uso de `worker_threads` para los cálculos de `pip-worker` y `analysis-worker` asegura que el hilo principal de Node.js nunca se bloquee, manteniendo la máxima capacidad de respuesta del sistema.
 
-Este diseño integral convierte al Bot Fantasma en una herramienta de trading sofisticada, construida no solo para analizar el mercado, sino para librar una batalla de información contra la infraestructura del broker.
+**Observación sobre la Generación Inmediata de Señales:**
+Es normal que, una vez que los indicadores han "madurado" con las velas históricas (es decir, tienen suficientes datos para calcularse), el `analysis-worker` pueda generar señales inmediatamente si las condiciones estratégicas y tácticas se cumplen. Esto no indica necesariamente "confusión" o "oportunidades inválidas" per se, sino que el motor de indicadores está funcionando como se espera.
+La capa del `Humanizer` (actualmente pendiente de integración completa) es la que añadiría la "disciplina" y el "filtro" adicional, introduciendo retrasos y evaluando la "personalidad" del bot antes de aprobar una operación. Una vez que el `Humanizer` esté completamente integrado, se espera que la frecuencia y el patrón de las órdenes ejecutadas sean menos "agresivos" y más "humanizados".

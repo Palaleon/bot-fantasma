@@ -62,6 +62,12 @@ const config = {
 
   // Configuración del servidor de exportación de sockets
   socketExportPort: parseInt(process.env.SOCKET_EXPORT_PORT, 10) || 3000,
+
+  // Configuración del Harvester (Oído)
+  harvester: {
+    host: process.env.HARVESTER_HOST || '127.0.0.1',
+    port: parseInt(process.env.HARVESTER_PORT, 10) || 8765,
+  },
 };
 
 export default config;

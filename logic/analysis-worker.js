@@ -11,6 +11,14 @@ const manager = new ChannelManager();
 // pero podemos tener una instancia de referencia si es necesario.
 // const engine = new IndicatorEngine();
 
+const timeframeMap = {
+  60: '1m',
+  300: '5m',
+  600: '10m',
+  900: '15m',
+  1800: '30m'
+};
+
 parentPort.on('message', (msg) => {
   try {
     switch (msg.type) {
@@ -20,41 +28,49 @@ parentPort.on('message', (msg) => {
         break;
 
       case 'candle':
-        // logger.warn(`[DEBUG-ANALYSIS] Recibida vela para ${msg.data.asset}`);
-        const signal = manager.processCandle(msg.data);
+        const candleData = msg.data;
+        const { time, timeframe, asset } = candleData;
+
+        // --- FILTRO DE RELEVANCIA TEMPORAL ---
+        const periodInSeconds = parseInt(timeframe.slice(0, -1)) * (timeframe.endsWith('s') ? 1 : 60);
+        const candleCloseTimestamp = time + periodInSeconds;
+        const nowTimestamp = Date.now() / 1000;
+        
+        const STALE_THRESHOLD_SECONDS = 15;
+
+        if (nowTimestamp - candleCloseTimestamp > STALE_THRESHOLD_SECONDS) {
+          logger.info(`WORKER-ANALYSIS: 🕯️ Vela de ${asset} [${timeframe}] descartada por ser obsoleta. Antigüedad: ${Math.round(nowTimestamp - candleCloseTimestamp)}s.`);
+          return;
+        }
+        // --- FIN DEL FILTRO ---
+
+        const signal = manager.processCandle(candleData);
+        
         if (signal) {
+          // --- ASIGNACIÓN DE ID ÚNICO ---
+          signal.id = `sig_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 5)}`;
+          logger.warn(`WORKER-ANALYSIS: ✅ ¡Señal VIGENTE generada! [ID: ${signal.id}]`);
           parentPort.postMessage({ type: 'signal', data: signal });
         }
         break;
       
-      // **NUEVO: Lógica para impregnar los indicadores con velas históricas**
       case 'prime-indicators':
-        const { asset, candles: historicalCandles } = msg.data;
-        logger.warn(`WORKER-ANALYSIS: Recibido paquete de ${historicalCandles.length} velas históricas para ${asset}. Impregnando indicadores...`);
+        const { asset: primeAsset, candles: historicalCandles, timeframe: tfSeconds } = msg.data;
+        const tfString = timeframeMap[tfSeconds];
 
-        if (!asset || !historicalCandles || historicalCandles.length === 0) {
-          logger.error('WORKER-ANALYSIS: Datos históricos inválidos o vacíos.');
+        logger.warn(`WORKER-ANALYSIS: Recibido paquete de ${historicalCandles.length} velas para ${primeAsset} (${tfSeconds}s -> ${tfString}). Impregnando...`);
+
+        if (!primeAsset || !tfString || !historicalCandles || historicalCandles.length === 0) {
+          logger.error('WORKER-ANALYSIS: Datos históricos inválidos, vacíos o sin timeframe válido.');
           return;
         }
 
-        // Asegurarse de que el canal para este activo existe
-        const channel = manager.getChannel(asset, true); // true para crear si no existe
+        const channel = manager.getChannel(primeAsset, true);
+        const sortedCandles = historicalCandles.sort((a, b) => a.time - b.time);
 
-        // Formatear las velas históricas al formato que espera el IndicatorEngine
-        // El formato del broker es: [timestamp, open, close, high, low, volume, ?]
-        // Nuestro formato es: { open, high, low, close, volume, time }
-        const formattedCandles = historicalCandles.map(c => ({
-          time: c.id, // o c.created_at, dependiendo de cuál sea el timestamp correcto
-          open: c.open,
-          close: c.close,
-          high: c.high,
-          low: c.low,
-          volume: c.volume
-        })).sort((a, b) => a.time - b.time); // Asegurarse de que están en orden cronológico
-
-        // Impregnar el motor de indicadores del canal con las velas formateadas
-        channel.indicatorEngine.prime(formattedCandles);
-        logger.info(`WORKER-ANALYSIS: Indicadores para ${asset} impregnados con éxito. Listo para análisis en tiempo real.`);
+        channel.indicatorEngine.prime(sortedCandles, tfString);
+        
+        logger.info(`WORKER-ANALYSIS: Indicadores para ${primeAsset} (${tfString}) impregnados con éxito.`);
         break;
 
       default:
