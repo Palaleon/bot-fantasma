@@ -1,101 +1,18 @@
 import asyncio
 import json
 import logging
+import random
 from playwright.async_api import async_playwright
 
-<<<<<<< HEAD
 # ==================================================================================================
 # === DOCUMENTACIÓN PARA EL CLIENTE (app.js / bot de Node.js) ===
 # ==================================================================================================
 #
-# Este script envía dos tipos principales de mensajes a través de una conexión TCP.
-# Cada mensaje es un objeto JSON enviado como una sola línea, terminado con un '\n'.
-#
-# ---
-#
-# 1. TIPO DE MENSAJE: 'historical-candles'
-# -----------------------------------------
-# Propósito: Enviar un lote grande de velas históricas para un activo y un timeframe
-#            específico. Esto se usa para la "precarga" o "backfilling" inicial del gráfico.
-#
-# Estructura del JSON:
-# {
-#   "type": "historical-candles",
-#   "payload": {
-#     "asset": "EURUSD_otc",
-#     "timeframe": 60,
-#     "candles": [
-#       {"time": 1751301600, "open": 39.8893, "close": 39.8881, "high": 39.8894, "low": 39.8881, "volume": 7},
-#       {"time": 1751301540, "open": 39.8907, "close": 39.8895, "high": 39.8927, "low": 39.8866, "volume": 86},
-#       ...
-#     ]
-#   }
-# }
-#
-# Campos:
-# - asset (string): El nombre del activo (ej. "USDTRY_otc").
-# - timeframe (int): El marco de tiempo de las velas en segundos (ej. 60 para 1m).
-# - candles (array): Una lista de objetos, donde cada objeto es una vela (OHLC).
-#   - time: Timestamp de UNIX del inicio de la vela.
-#   - open, high, low, close: Precios de la vela.
-#   - volume: Volumen de la vela.
-#
-# ---
-#
-# 2. TIPO DE MENSAJE: 'pip'
-# --------------------------
-# Propósito: Enviar una actualización de precio individual (un tick o pip). Se usa tanto para
-#            los pips de "reanudación" (que vienen con el primer paquete de 1m) como para
-#            los pips en tiempo real que llegan después de la precarga.
-#
-# Estructura del JSON:
-# {
-#   "type": "pip",
-#   "payload": {
-#     "asset": "EURUSD_otc",
-#     "price": 1.0875,
-#     "timestamp": 1751304981.164
-#   }
-# }
-#
-# Campos:
-# - asset (string): El nombre del activo.
-# - price (float): El precio actual del activo.
-# - timestamp (float): El timestamp de UNIX exacto de cuándo se registró el precio.
-#
-# ---
-#
-# GUÍA PARA EL DESARROLLADOR DE app.js
-# ------------------------------------
-# El flujo de datos está diseñado para construir un gráfico preciso sin perder información,
-# incluso si tu aplicación se conecta después de que la precarga haya comenzado.
-#
-# 1. Conéctate al servidor TCP. El servidor te enviará datos en cuanto se conecte.
-#
-# 2. Escucha los mensajes y procesa según el campo "type":
-#
-# 3. Si recibes 'historical-candles':
-#    - Usa el array 'candles' para dibujar la base histórica de tu gráfico para ese
-#      activo y timeframe. Puedes almacenarlos en un array o directamente en la librería
-#      de gráficos que uses.
-#
-# 4. Si recibes 'pip':
-#    - Este es el dato más reciente. Úsalo para actualizar la última vela en tu gráfico.
-#    - Si el timestamp del pip es mayor que el de la última vela, podrías necesitar
-#      crear una nueva vela.
-#    - El servidor te enviará un lote inicial de pips de "reanudación" y luego seguirá
-#      enviando pips en tiempo real uno por uno. Tu lógica debe manejar ambos casos de
-#      la misma manera.
-#
-# IMPORTANTE: Debido a la naturaleza asíncrona, podrías recibir pips para un activo
-# ANTES de recibir su paquete de velas históricas. Tu aplicación debe poder almacenar
-# estos pips temporalmente y aplicarlos al gráfico una vez que las velas históricas lleguen.
+# (La documentación no cambia)
 #
 # ==================================================================================================
 
 
-=======
->>>>>>> dba811d02d2d22e0ea200085ea62279714750e71
 # --- Configuración ---
 LOG_LEVEL = logging.INFO
 TCP_HOST = "127.0.0.1"
@@ -104,7 +21,6 @@ BROWSER_CDP_ENDPOINT = "http://localhost:9222"
 BROKER_URL_FRAGMENT = "qxbroker.com/es/trade"
 WEBSOCKET_URL_FRAGMENT = "ws2.qxbroker.com/socket.io"
 
-<<<<<<< HEAD
 # Timeframes requeridos en segundos para la precarga de cada activo
 REQUIRED_TIMEFRAMES = {60, 300, 600, 900, 1800} # 1m, 5m, 10m, 15m, 30m
 
@@ -115,50 +31,178 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 
-class AssetStateManager:
-    """Gestiona el estado de inicialización y 'precarga' de cada activo de forma individual."""
+# ==================================================================================================
+# === ActiveAssetManager (ESTRATEGIA FINAL: CANAL LATERAL) ===
+# ==================================================================================================
+class ActiveAssetManager:
+    """
+    Utiliza un socket expuesto a través de un "canal lateral" para emitir mensajes.
+    """
     def __init__(self):
-        self.states = {}
-        logging.info("Gestor de Estado de Activos inicializado.")
+        self.page = None
+        self.active_assets = set()
+        self.lock = asyncio.Lock()
+        self.primer_activo_procesado = False # Flag para el primer activo
+        logging.info("[ActiveManager] Inicializado en modo de canal lateral.")
 
+    def set_page(self, page):
+        """Recibe y almacena la página de Playwright."""
+        self.page = page
+        logging.info("[ActiveManager] Página de Playwright recibida.")
+
+    def start_background_tasks(self):
+        logging.info("[ActiveManager] Iniciando tareas de fondo (bucle de refresco).")
+        asyncio.create_task(self._refresh_loop())
+
+    async def send_message(self, message):
+        """Ejecuta JS para enviar un mensaje a través del socket expuesto."""
+        if not self.page:
+            logging.warning("[ActiveManager] No se puede enviar mensaje, la página no está asignada.")
+            return
+
+        try:
+            js_code = """
+            (msg) => {
+                if (window.harvesterSocket && typeof window.harvesterSocket.send === 'function') {
+                    window.harvesterSocket.send(msg);
+                    return true;
+                }
+                return false;
+            }
+            """
+            success = await self.page.evaluate(js_code, message)
+            if not success:
+                logging.warning("[ActiveManager] No se pudo enviar mensaje: window.harvesterSocket no existe.")
+        except Exception as e:
+            logging.error(f"[ActiveManager] Error al ejecutar script en la página: {e}")
+
+    def _get_warmup_sequence(self, asset_name, is_first_asset=False):
+        """
+        Genera la secuencia de calentamiento. Omite la temporalidad de 1m (60s) si es el primer activo.
+        """
+        def create_msg(event, data):
+            return f'42{json.dumps([event, data], separators=(",", ":"))}'
+        def get_settings_payload(chart_period):
+            return {"chartId": "graph","settings": {"chartId": "graph", "chartType": 2, "currentExpirationTime": 1751338500,"isFastOption": False, "isFastAmountOption": False, "isIndicatorsMinimized": False,"isIndicatorsShowing": True, "isShortBetElement": False, "chartPeriod": chart_period,"currentAsset": {"symbol": asset_name}, "dealValue": 1, "dealPercentValue": 5,"isVisible": True, "timePeriod": 60, "gridOpacity": 0, "isAutoScrolling": True,"isOneClickTrade": True, "upColor": "#0FAF59", "downColor": "#FF6251"}}
+        
+        sequence = [
+            create_msg("instruments/update", {"asset": asset_name, "period": 1800}), create_msg("chart_notification/get", {"asset": asset_name, "version": "1.0.0"}), create_msg("chart_notification/get", {"asset": asset_name, "version": "1.0.0"}), create_msg("chart_notification/get", {"asset": asset_name, "version": "1.0.0"}), create_msg("settings/store", get_settings_payload(9)),
+            create_msg("instruments/update", {"asset": asset_name, "period": 900}), create_msg("chart_notification/get", {"asset": asset_name, "version": "1.0.0"}), create_msg("chart_notification/get", {"asset": asset_name, "version": "1.0.0"}), create_msg("chart_notification/get", {"asset": asset_name, "version": "1.0.0"}), create_msg("settings/store", get_settings_payload(8)),
+            create_msg("instruments/update", {"asset": asset_name, "period": 600}), create_msg("chart_notification/get", {"asset": asset_name, "version": "1.0.0"}), create_msg("chart_notification/get", {"asset": asset_name, "version": "1.0.0"}), create_msg("chart_notification/get", {"asset": asset_name, "version": "1.0.0"}), create_msg("settings/store", get_settings_payload(7)),
+            create_msg("instruments/update", {"asset": asset_name, "period": 300}), create_msg("chart_notification/get", {"asset": asset_name, "version": "1.0.0"}), create_msg("chart_notification/get", {"asset": asset_name, "version": "1.0.0"}), create_msg("settings/store", get_settings_payload(6)), create_msg("chart_notification/get", {"asset": asset_name, "version": "1.0.0"}),
+        ]
+
+        if not is_first_asset:
+             sequence.extend([
+                create_msg("instruments/update", {"asset": asset_name, "period": 60}), create_msg("chart_notification/get", {"asset": asset_name, "version": "1.0.0"}), create_msg("chart_notification/get", {"asset": asset_name, "version": "1.0.0"}), create_msg("chart_notification/get", {"asset": asset_name, "version": "1.0.0"}), create_msg("settings/store", get_settings_payload(4)),
+            ])
+        else:
+            logging.warning(f"[ActiveManager] Se generó una secuencia de calentamiento para el primer activo ({asset_name}) omitiendo la temporalidad de 1m.")
+
+        return sequence
+
+    def _get_refresh_sequence(self, asset_name):
+        def create_msg(event, data):
+            return f'42{json.dumps([event, data], separators=(",", ":"))}'
+        settings_payload = {"chartId": "graph","settings": {"chartId": "graph", "chartType": 2, "currentExpirationTime": 1751338500,"isFastOption": False, "isFastAmountOption": False, "isIndicatorsMinimized": False,"isIndicatorsShowing": True, "isShortBetElement": False, "chartPeriod": 4,"currentAsset": {"symbol": asset_name}, "dealValue": 1, "dealPercentValue": 5,"isVisible": True, "timePeriod": 60, "gridOpacity": 0, "isAutoScrolling": True,"isOneClickTrade": True, "upColor": "#0FAF59", "downColor": "#FF6251"}}
+        return [
+            create_msg("instruments/update", {"asset": asset_name, "period": 60}),
+            create_msg("chart_notification/get", {"asset": asset_name, "version": "1.0.0"}),
+            create_msg("depth/unfollow", asset_name),
+            create_msg("depth/follow", asset_name),
+            create_msg("chart_notification/get", {"asset": asset_name, "version": "1.0.0"}),
+            create_msg("settings/store", settings_payload),
+        ]
+
+    async def _run_sequence(self, sequence, sequence_name="secuencia"):
+        logging.info(f"[ActiveManager] Ejecutando '{sequence_name}' de {len(sequence)} mensajes.")
+        for msg in sequence:
+            await self.send_message(msg)
+            await asyncio.sleep(random.uniform(0.3, 0.8))
+
+    async def _refresh_loop(self):
+        while True:
+            await asyncio.sleep(random.uniform(7 * 60, 15 * 60))
+            if not self.active_assets:
+                continue
+            logging.info(f"[ActiveManager] Iniciando ciclo de refresco para {len(self.active_assets)} activo(s).")
+            async with self.lock:
+                assets_to_refresh = list(self.active_assets)
+            for asset in assets_to_refresh:
+                if not self.page:
+                    logging.warning("[ActiveManager] Omitiendo refresco, la página no está disponible.")
+                    break
+                logging.info(f"[ActiveManager] Refrescando activo: {asset}")
+                refresh_sequence = self._get_refresh_sequence(asset)
+                await self._run_sequence(refresh_sequence, sequence_name="refresco")
+                logging.info(f"[ActiveManager] Refresco para {asset} completado. Esperando para el siguiente.")
+                await asyncio.sleep(random.uniform(60, 90))
+            logging.info("[ActiveManager] Ciclo de refresco de todos los activos completado.")
+
+    async def add_asset(self, asset_name):
+        if not self.page:
+            logging.error(f"[ActiveManager] No se puede procesar {asset_name}, la página no está asignada.")
+            return
+
+        try:
+            await self.page.wait_for_function("() => window.harvesterSocket", timeout=15000)
+        except Exception:
+            logging.error(f"[ActiveManager] Timeout esperando por window.harvesterSocket. No se puede calentar {asset_name}.")
+            return
+
+        async with self.lock:
+            if asset_name not in self.active_assets:
+                es_el_primero = not self.primer_activo_procesado
+                
+                logging.info(f"[ActiveManager] Procesando nuevo activo {asset_name} para calentamiento.")
+                
+                warmup_sequence = self._get_warmup_sequence(asset_name, is_first_asset=es_el_primero)
+                
+                await self._run_sequence(warmup_sequence, sequence_name="calentamiento")
+                
+                self.active_assets.add(asset_name)
+                
+                if es_el_primero:
+                    self.primer_activo_procesado = True
+                
+                logging.info(f"[ActiveManager] Calentamiento para {asset_name} completado. Activo añadido a la lista de refresco.")
+
+class AssetStateManager:
+    def __init__(self, active_asset_manager=None):
+        self.states = {}
+        self.active_asset_manager = active_asset_manager
+        logging.info("Gestor de Estado de Activos inicializado.")
     def _get_or_create_asset_state(self, asset_name):
         if asset_name not in self.states:
             self.states[asset_name] = {tf: False for tf in REQUIRED_TIMEFRAMES}
+            self.states[asset_name]["_notified"] = False
             logging.info(f"Nuevo activo detectado: {asset_name}. Estado de precarga inicializado.")
+            if self.active_asset_manager:
+                logging.info(f"Enviando {asset_name} al ActiveAssetManager para procesar.")
+                asyncio.create_task(self.active_asset_manager.add_asset(asset_name))
         return self.states[asset_name]
-
     def mark_as_received(self, asset_name, timeframe_seconds):
         if timeframe_seconds in REQUIRED_TIMEFRAMES:
             state = self._get_or_create_asset_state(asset_name)
-            if not state[timeframe_seconds]:
-                state[timeframe_seconds] = True
+            if not state.get(timeframe_seconds, False):
                 logging.info(f"Precarga para {asset_name} en timeframe {timeframe_seconds}s [OK]")
+                state[timeframe_seconds] = True
                 self.check_if_ready(asset_name)
-
-    def is_ready(self, asset_name):
-        state = self._get_or_create_asset_state(asset_name)
-        return all(state.values())
-
+    def is_ready_for_pips(self, asset_name):
+        return self.states.get(asset_name, {}).get("_notified", False)
     def check_if_ready(self, asset_name):
-        if self.is_ready(asset_name):
+        state = self._get_or_create_asset_state(asset_name)
+        if state.get("_notified", False): return
+        if all(state.get(tf, False) for tf in REQUIRED_TIMEFRAMES):
             logging.warning(f"¡PRECARGA COMPLETA! El activo {asset_name} está listo. Se habilita el flujo de pips en tiempo real.")
+            state["_notified"] = True
 
 class TCPServer:
-    """Servidor TCP con búfer para enviar datos al bot de Node.js sin pérdidas."""
-=======
-# --- Logging ---
-logging.basicConfig(level=LOG_LEVEL, format='%(asctime)s - [%(levelname)s] - (Harvester) - %(message)s')
-
-class TCPServer:
-    """Un servidor TCP simple que maneja un único cliente (el bot de Node.js)."""
->>>>>>> dba811d02d2d22e0ea200085ea62279714750e71
     def __init__(self, host, port):
-        self.host = host
-        self.port = port
+        self.host, self.port = host, port
         self.writer = None
-<<<<<<< HEAD
         self.message_queue = asyncio.Queue()
-
+        self.ready_event = asyncio.Event()
     async def _sender_loop(self):
         logging.info("Bucle de envío iniciado. Esperando mensajes...")
         while True:
@@ -167,39 +211,24 @@ class TCPServer:
             while not sent:
                 if self.writer and not self.writer.is_closing():
                     try:
-                        message_str = f"{json.dumps(message)}\n"
-                        self.writer.write(message_str.encode('utf-8'))
+                        self.writer.write(f"{json.dumps(message)}\n".encode('utf-8'))
                         await self.writer.drain()
                         sent = True
                     except (ConnectionResetError, BrokenPipeError):
-                        logging.error("Conexión con el bot de Node.js perdida mientras se enviaba. Esperando reconexión...")
+                        logging.error("Conexión con el bot de Node.js perdida. Esperando reconexión...")
                         self.writer = None
-                if not sent:
-                    await asyncio.sleep(0.5)
+                if not sent: await asyncio.sleep(0.5)
             self.message_queue.task_done()
-
     async def start(self):
-        """Inicia el servidor, pero no bloquea. Devuelve la instancia del servidor."""
         asyncio.create_task(self._sender_loop())
         server = await asyncio.start_server(self.handle_client, self.host, self.port)
         logging.info(f"Servidor TCP listo y escuchando en {self.host}:{self.port}")
-        return server
-=======
-        self.server = None
-
-    async def start(self):
-        self.server = await asyncio.start_server(self.handle_client, self.host, self.port)
-        logging.info(f"Servidor TCP listo y escuchando en {self.host}:{self.port}")
-        async with self.server:
-            await self.server.serve_forever()
->>>>>>> dba811d02d2d22e0ea200085ea62279714750e71
-
+        self.ready_event.set()
+        async with server: await server.serve_forever()
     def handle_client(self, reader, writer):
         client_addr = writer.get_extra_info('peername')
         logging.info(f"Bot de Node.js conectado desde {client_addr}")
         self.writer = writer
-
-<<<<<<< HEAD
     def send(self, data):
         try:
             self.message_queue.put_nowait(data)
@@ -209,82 +238,74 @@ class TCPServer:
             return False
 
 class WebSocketHarvester:
-    """Cosechador Inteligente que entiende tanto paquetes históricos como pips en tiempo real."""
-    def __init__(self, tcp_server):
+    def __init__(self, tcp_server, asset_manager, active_asset_manager):
         self.tcp_server = tcp_server
-        self.asset_manager = AssetStateManager()
+        self.asset_manager = asset_manager
+        self.active_asset_manager = active_asset_manager
+        # --- INICIO DE LA MODIFICACIÓN ---
+        # Registro para evitar paquetes históricos duplicados.
+        self._sent_historical_packets = set()
+        # --- FIN DE LA MODIFICACIÓN ---
 
     def _parse_data(self, payload_str):
-        """
-        Parsea la cadena de texto, detectando si es un paquete histórico (diccionario)
-        o un pip en tiempo real (lista).
-        """
         try:
             clean_payload_str = payload_str.lstrip('\x00\x04')
             data = json.loads(clean_payload_str)
-
-            # Formato 1: Paquete histórico (es un diccionario)
             if isinstance(data, dict):
-                timeframe = data.get("period")
-                asset = data.get("asset")
-                pips = data.get("history")
-                candles = data.get("candles")
-                if all((timeframe, asset, pips, candles is not None)):
+                timeframe, asset, pips, candles = data.get("period"), data.get("asset"), data.get("history"), data.get("candles")
+                if all((timeframe, asset, pips is not None, candles is not None)):
                     return "historical", {"tf": timeframe, "asset": asset, "pips": pips, "candles": candles}
-            
-            # Formato 2: Pip en tiempo real (es una lista)
             elif isinstance(data, list) and len(data) > 0 and isinstance(data[0], list):
                 pip_data = data[0]
                 if len(pip_data) >= 3:
-                    asset = pip_data[0]
-                    timestamp = pip_data[1]
-                    price = pip_data[2]
+                    asset, timestamp, price = pip_data[0], pip_data[1], pip_data[2]
                     return "realtime_pip", {"asset": asset, "timestamp": timestamp, "price": price}
-
-        except (json.JSONDecodeError, AttributeError, IndexError):
-            pass
-        
+        except (json.JSONDecodeError, AttributeError, IndexError, TypeError): pass
         return None, None
-
+        
     async def on_websocket_frame(self, payload):
-        """Se ejecuta cada vez que se recibe un mensaje del WebSocket."""
-        if not isinstance(payload, bytes):
-            return
-
-        decoded_payload = payload.decode('utf-8', errors='ignore')
+        if isinstance(payload, bytes): decoded_payload = payload.decode('utf-8', errors='ignore')
+        elif isinstance(payload, str): decoded_payload = payload
+        else: return
+        
         msg_type, data = self._parse_data(decoded_payload)
-
-        if not msg_type:
-            return
+        if not msg_type: return
 
         if msg_type == "historical":
-            asset = data["asset"]
-            timeframe = data["tf"]
-            logging.info(f"Paquete histórico recibido para {asset} con timeframe {timeframe}s.")
+            asset, timeframe = data["asset"], data["tf"]
             
-            if timeframe in REQUIRED_TIMEFRAMES and not self.asset_manager.states.get(asset, {}).get(timeframe, False):
-                candles = data["candles"]
-                pips = data["pips"]
+            # --- INICIO DE LA MODIFICACIÓN ---
+            # Crear un identificador único para el paquete basado en el activo y el periodo.
+            packet_id = (asset, timeframe)
+
+            # Verificar si este paquete ya fue enviado. Si es así, se omite y se registra.
+            if packet_id in self._sent_historical_packets:
+                logging.warning(f"Paquete histórico duplicado para {asset} ({timeframe}s) detectado. Se omite el envío.")
+                return # Detener el procesamiento de este paquete duplicado.
+            # --- FIN DE LA MODIFICACIÓN ---
+
+            logging.info(f"Paquete histórico recibido para {asset} con timeframe {timeframe}s.")
+            if timeframe in REQUIRED_TIMEFRAMES:
+                self.asset_manager.mark_as_received(asset, timeframe)
+                candles, pips = data["candles"], data["pips"]
                 formatted_candles = [{'time': c[0], 'open': c[1], 'close': c[2], 'high': c[3], 'low': c[4], 'volume': c[5]} for c in candles]
                 message = {"type": "historical-candles", "payload": {"asset": asset, "timeframe": timeframe, "candles": formatted_candles}}
                 
                 if self.tcp_server.send(message):
                     logging.info(f"Encolado paquete histórico de {len(formatted_candles)} velas para {asset} ({timeframe}s).")
-                
-                self.asset_manager.mark_as_received(asset, timeframe)
+                    
+                    # --- INICIO DE LA MODIFICACIÓN ---
+                    # Si el envío fue exitoso, se añade al registro para no volver a enviarlo.
+                    self._sent_historical_packets.add(packet_id)
+                    # --- FIN DE LA MODIFICACIÓN ---
 
                 if timeframe == 60:
                     logging.info(f"Encolando {len(pips)} pips de reanudación para {asset} (1m)...")
-                    for pip in pips:
-                        pip_message = {"type": "pip", "payload": {"asset": asset, "price": pip[1], "timestamp": pip[0]}}
-                        self.tcp_server.send(pip_message)
-
+                    for pip in pips: self.tcp_server.send({"type": "pip", "payload": {"asset": asset, "price": pip[1], "timestamp": pip[0]}})
+        
         elif msg_type == "realtime_pip":
-            asset = data["asset"]
-            if self.asset_manager.is_ready(asset):
-                pip_message = {"type": "pip", "payload": data}
-                self.tcp_server.send(pip_message)
-                logging.debug(f"Pip en tiempo real para {asset} encolado: {data['price']}")
+            if self.asset_manager.is_ready_for_pips(data["asset"]):
+                self.tcp_server.send({"type": "pip", "payload": data})
 
     def setup_websocket_listener(self, ws):
         if WEBSOCKET_URL_FRAGMENT in ws.url:
@@ -298,122 +319,58 @@ class WebSocketHarvester:
                 browser = await p.chromium.connect_over_cdp(BROWSER_CDP_ENDPOINT)
                 logging.info("Conectado al navegador existente correctamente.")
             except Exception as e:
-                logging.critical(f"No se pudo conectar al navegador. Asegúrate de que Chrome/Chromium esté corriendo con --remote-debugging-port=9222. Error: {e}")
+                logging.critical(f"No se pudo conectar al navegador. Error: {e}")
                 return
+            context = browser.contexts[0] if browser.contexts else await browser.new_context()
 
-            context = browser.contexts[0]
+            # --- INYECCIÓN DEL SCRIPT DE CAPTURA ---
+            init_script = """
+            (() => {
+                if (WebSocket.prototype.originalSend) return;
+                WebSocket.prototype.originalSend = WebSocket.prototype.send;
+                WebSocket.prototype.send = function(data) {
+                    if (!window.harvesterSocket) {
+                        console.log('Harvester: Capturado el objeto WebSocket y asignado a window.harvesterSocket');
+                        window.harvesterSocket = this;
+                    }
+                    WebSocket.prototype.originalSend.apply(this, arguments);
+                };
+            })();
+            """
+            await context.add_init_script(init_script)
+            
             page = await context.new_page()
+            
+            self.active_asset_manager.set_page(page)
+            
             page.on("websocket", self.setup_websocket_listener)
             
-            logging.info(f"Navegando a la página del broker ({BROKER_URL_FRAGMENT}) para iniciar la captura de tráfico de red...")
+            logging.info(f"Navegando a la página del broker ({BROKER_URL_FRAGMENT})...")
             try:
                 await page.goto(f"https://{BROKER_URL_FRAGMENT}", wait_until="networkidle", timeout=60000)
-                logging.info("Cosechador listo y escuchando activamente el tráfico de red.")
+                logging.info("Página cargada completamente.")
             except Exception as e:
-                logging.error(f"No se pudo navegar a la página del broker. ¿Hay conexión a internet? Error: {e}")
+                logging.error(f"No se pudo navegar a la página del broker. Error: {e}")
+                return
 
+            logging.info("Cosechador listo y escuchando activamente.")
             await asyncio.Event().wait()
 
 async def main():
-    """Función que organiza e inicia todas las tareas asíncronas con pausa de control."""
+    active_manager = ActiveAssetManager()
+    asset_manager = AssetStateManager(active_asset_manager=active_manager)
     tcp_server = TCPServer(TCP_HOST, TCP_PORT)
-    harvester = WebSocketHarvester(tcp_server)
-    
-    # Inicia el servidor TCP y obtiene la instancia
-    server = await tcp_server.start()
+    harvester = WebSocketHarvester(tcp_server, asset_manager, active_manager)
 
-    # --- PAUSA PARA CONTROL MANUAL ---
-    loop = asyncio.get_event_loop()
-    await loop.run_in_executor(None, lambda: input("\n*** Presiona ENTER para que el Harvester comience a capturar datos del WebSocket... ***\n"))
-    
-    # Ahora, inicia las tareas del cosechador y del servidor en paralelo
-    server_task = asyncio.create_task(server.serve_forever())
-    harvester_task = asyncio.create_task(harvester.start())
-    
-=======
-    async def send(self, data_type, payload):
-        """Envía datos al cliente Node.js conectado."""
-        if self.writer and not self.writer.is_closing():
-            try:
-                message_obj = {"type": data_type, "payload": payload}
-                message_str = json.dumps(message_obj) + '
-'
-                self.writer.write(message_str.encode('utf-8'))
-                await self.writer.drain()
-                return True
-            except (ConnectionResetError, BrokenPipeError):
-                logging.error("Conexión con Node.js perdida. Esperando nueva conexión.")
-                self.writer = None
-                return False
-        return False
-
-class WebSocketHarvester:
-    """Se conecta al navegador, espía el WebSocket y envía los datos al TCPServer."""
-    def __init__(self, tcp_server):
-        self.tcp_server = tcp_server
-
-    async def on_websocket_frame(self, payload):
-        """Procesa un frame del WebSocket y lo envía por TCP si es relevante."""
-        try:
-            if not payload.startswith('42'):
-                return
-
-            message = json.loads(payload[2:])
-            event_name, data = message[0], message[1]
-
-            if event_name == 'pip':
-                formatted_payload = {
-                    "price": data.get("price"),
-                    "rawAsset": data.get("asset"),
-                    "timestamp": data.get("created_at")
-                }
-                await self.tcp_server.send("pip", formatted_payload)
-
-            elif event_name == 'candles-generated':
-                logging.info(f"Cosechado paquete histórico para {data.get('asset')}")
-                await self.tcp_server.send("historical-candles", data)
-
-        except Exception:
-            pass # Ignorar errores de parseo silenciosamente
-
-    def setup_websocket_listener(self, ws):
-        """Se engancha a un nuevo WebSocket si es el que buscamos."""
-        if WEBSOCKET_URL_FRAGMENT in ws.url:
-            logging.info(f"Enganchado al WebSocket de datos: {ws.url}")
-            ws.on("framereceived", self.on_websocket_frame)
-
-    async def start(self):
-        """Función principal para iniciar el cosechador."""
-        logging.info("Iniciando Cosechador de WebSockets...")
-        async with async_playwright() as p:
-            try:
-                browser = await p.chromium.connect_over_cdp(BROWSER_CDP_ENDPOINT)
-                logging.info(f"Conectado al navegador en {BROWSER_CDP_ENDPOINT}")
-            except Exception as e:
-                logging.critical(f"No se pudo conectar al navegador. Asegúrate de que Chrome esté corriendo con --remote-debugging-port=9222. Error: {e}")
-                return
-
-            context = browser.contexts[0]
-            
-            audit_page = await context.new_page()
-            logging.info("Página de auditoría dedicada creada.")
-            
-            audit_page.on("websocket", self.setup_websocket_listener)
-            
-            await audit_page.goto(f"https://{BROKER_URL_FRAGMENT}", wait_until="networkidle")
-            logging.info(f"Página de auditoría navegada a {audit_page.url()}")
-            logging.info("Cosechador listo y escuchando. El bot de Node.js ya puede conectarse.")
-            
-            await asyncio.Event().wait()
-
-async def main():
-    tcp_server = TCPServer(TCP_HOST, TCP_PORT)
-    harvester = WebSocketHarvester(tcp_server)
+    active_manager.start_background_tasks()
 
     server_task = asyncio.create_task(tcp_server.start())
+    await tcp_server.ready_event.wait()
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(
+        None, lambda: input(">>> Presiona ENTER para iniciar la recolección de datos del Harvester... ")
+    )
     harvester_task = asyncio.create_task(harvester.start())
-
->>>>>>> dba811d02d2d22e0ea200085ea62279714750e71
     await asyncio.gather(server_task, harvester_task)
 
 if __name__ == "__main__":

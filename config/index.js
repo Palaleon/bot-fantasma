@@ -10,7 +10,8 @@ dotenv.config();
  * @property {number} humanizer.maxConsecutiveTrades
  * @property {number} humanizer.minTradeIntervalMs
  * @property {object} trading
- * @property {number} trading.baseStake
+ * @property {number} trading.minInvestment // <-- CAMBIO
+ * @property {number} trading.maxInvestment // <-- CAMBIO
  * @property {object} telegram
  * @property {string} telegram.botToken
  * @property {string} telegram.chatId
@@ -18,15 +19,15 @@ dotenv.config();
  */
 
 /**
- * Configuración centralizada de la aplicación v2.1
- * CAMBIOS: Eliminadas configuraciones TCP (tcpHost, tcpPort)
+ * Configuración centralizada de la aplicación v2.2
+ * CAMBIOS: Implementado rango de inversión dinámico (min/max)
  * @type {Config}
  */
 const config = {
   nodeEnv: process.env.NODE_ENV || 'development',
   logLevel: process.env.LOG_LEVEL || 'info',
-  
-  // Configuración del humanizador
+
+  // Configuración del humanizador (se mantiene tu estructura original)
   humanizer: {
     maxConsecutiveTrades: parseInt(process.env.HUMANIZER_MAX_CONSECUTIVE_TRADES, 10) || 2,
     minTradeIntervalMs: (parseInt(process.env.HUMANIZER_MIN_TRADE_INTERVAL_S, 10) || 60) * 1000,
@@ -36,34 +37,40 @@ const config = {
     },
   },
 
-  // Configuración de trading
+  // =======================================================================
+  // AVISO: SECCIÓN DE TRADING ACTUALIZADA PARA INVERSIÓN DINÁMICA
+  // =======================================================================
   trading: {
-    baseStake: parseInt(process.env.TRADING_BASE_STAKE, 10) || 1,
+    // Rango de inversión para la estrategia dinámica.
+    // El bot calculará el monto a invertir dentro de este rango,
+    // basándose en la confianza de la señal.
+    minInvestment: parseFloat(process.env.MIN_INVESTMENT) || 5,
+    maxInvestment: parseFloat(process.env.MAX_INVESTMENT) || 25,
   },
+  // =======================================================================
 
-  // Configuración de Telegram
+  // Configuración de Telegram (se mantiene tu estructura original)
   telegram: {
     botToken: process.env.TELEGRAM_BOT_TOKEN,
     chatId: process.env.TELEGRAM_CHAT_ID,
   },
 
-  // NUEVO: Configuración del Broker
+  // Configuración del Broker (se mantiene tu estructura original)
   broker: {
     url: process.env.BROKER_URL || 'https://qxbroker.com/es/trade',
     email: process.env.BROKER_EMAIL || '',
     password: process.env.BROKER_PASSWORD || '',
   },
 
-  // Configuración de Puppeteer para controlar el navegador
+  // Configuración de Puppeteer (se mantiene tu estructura original)
   puppeteer: {
-    // Puerto para conectar con una instancia de Chrome existente
     debuggingPort: parseInt(process.env.PUPPETEER_DEBUGGING_PORT, 10) || 9222,
   },
 
-  // Configuración del servidor de exportación de sockets
+  // Configuración del servidor de exportación de sockets (se mantiene tu estructura original)
   socketExportPort: parseInt(process.env.SOCKET_EXPORT_PORT, 10) || 3000,
 
-  // Configuración del Harvester (Oído)
+  // Configuración del Harvester (se mantiene tu estructura original)
   harvester: {
     host: process.env.HARVESTER_HOST || '127.0.0.1',
     port: parseInt(process.env.HARVESTER_PORT, 10) || 8765,

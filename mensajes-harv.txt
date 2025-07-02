@@ -1,0 +1,79 @@
+mensajes que debería envíar la nueva funcion de harvester.py:
+
+por cada activo nuevo que se detecte automaticamente la función debería emitir en la siguiente secuencia mensajes con el mismo formato, los datos que segun correspondan:
+
+42["instruments/update",{"asset":"USDDZD_otc","period":1800}]
+
+42["chart_notification/get",{"asset":"USDDZD_otc","version":"1.0.0"}]
+
+42["chart_notification/get",{"asset":"USDDZD_otc","version":"1.0.0"}]
+
+42["chart_notification/get",{"asset":"USDDZD_otc","version":"1.0.0"}]
+
+42["settings/store",{"chartId":"graph","settings":{"chartId":"graph","chartType":2,"currentExpirationTime":1751338500,"isFastOption":false,"isFastAmountOption":false,"isIndicatorsMinimized":false,"isIndicatorsShowing":true,"isShortBetElement":false,"chartPeriod":9,"currentAsset":{"symbol":"USDDZD_otc"},"dealValue":1,"dealPercentValue":5,"isVisible":true,"timePeriod":60,"gridOpacity":0,"isAutoScrolling":true,"isOneClickTrade":true,"upColor":"#0FAF59","downColor":"#FF6251"}}]
+
+42["instruments/update",{"asset":"USDDZD_otc","period":900}]
+
+42["chart_notification/get",{"asset":"USDDZD_otc","version":"1.0.0"}]
+
+42["chart_notification/get",{"asset":"USDDZD_otc","version":"1.0.0"}]
+
+42["chart_notification/get",{"asset":"USDDZD_otc","version":"1.0.0"}]
+
+42["settings/store",{"chartId":"graph","settings":{"chartId":"graph","chartType":2,"currentExpirationTime":1751338500,"isFastOption":false,"isFastAmountOption":false,"isIndicatorsMinimized":false,"isIndicatorsShowing":true,"isShortBetElement":false,"chartPeriod":8,"currentAsset":{"symbol":"USDDZD_otc"},"dealValue":1,"dealPercentValue":5,"isVisible":true,"timePeriod":60,"gridOpacity":0,"isAutoScrolling":true,"isOneClickTrade":true,"upColor":"#0FAF59","downColor":"#FF6251"}}]
+
+42["instruments/update",{"asset":"USDDZD_otc","period":600}]
+
+42["chart_notification/get",{"asset":"USDDZD_otc","version":"1.0.0"}]
+
+42["chart_notification/get",{"asset":"USDDZD_otc","version":"1.0.0"}]
+
+42["chart_notification/get",{"asset":"USDDZD_otc","version":"1.0.0"}]
+
+42["settings/store",{"chartId":"graph","settings":{"chartId":"graph","chartType":2,"currentExpirationTime":1751338500,"isFastOption":false,"isFastAmountOption":false,"isIndicatorsMinimized":false,"isIndicatorsShowing":true,"isShortBetElement":false,"chartPeriod":7,"currentAsset":{"symbol":"USDDZD_otc"},"dealValue":1,"dealPercentValue":5,"isVisible":true,"timePeriod":60,"gridOpacity":0,"isAutoScrolling":true,"isOneClickTrade":true,"upColor":"#0FAF59","downColor":"#FF6251"}}]
+
+42["instruments/update",{"asset":"USDDZD_otc","period":300}]
+
+42["chart_notification/get",{"asset":"USDDZD_otc","version":"1.0.0"}]
+
+42["chart_notification/get",{"asset":"USDDZD_otc","version":"1.0.0"}]
+
+42["settings/store",{"chartId":"graph","settings":{"chartId":"graph","chartType":2,"currentExpirationTime":1751338500,"isFastOption":false,"isFastAmountOption":false,"isIndicatorsMinimized":false,"isIndicatorsShowing":true,"isShortBetElement":false,"chartPeriod":6,"currentAsset":{"symbol":"USDDZD_otc"},"dealValue":1,"dealPercentValue":5,"isVisible":true,"timePeriod":60,"gridOpacity":0,"isAutoScrolling":true,"isOneClickTrade":true,"upColor":"#0FAF59","downColor":"#FF6251"}}]
+
+42["chart_notification/get",{"asset":"USDDZD_otc","version":"1.0.0"}]
+
+42["instruments/update",{"asset":"USDDZD_otc","period":60}]
+
+42["chart_notification/get",{"asset":"USDDZD_otc","version":"1.0.0"}]
+
+42["chart_notification/get",{"asset":"USDDZD_otc","version":"1.0.0"}]
+
+42["chart_notification/get",{"asset":"USDDZD_otc","version":"1.0.0"}]
+
+42["settings/store",{"chartId":"graph","settings":{"chartId":"graph","chartType":2,"currentExpirationTime":1751338500,"isFastOption":false,"isFastAmountOption":false,"isIndicatorsMinimized":false,"isIndicatorsShowing":true,"isShortBetElement":false,"chartPeriod":4,"currentAsset":{"symbol":"USDDZD_otc"},"dealValue":1,"dealPercentValue":5,"isVisible":true,"timePeriod":60,"gridOpacity":0,"isAutoScrolling":true,"isOneClickTrade":true,"upColor":"#0FAF59","downColor":"#FF6251"}}]
+
+
+
+Esta secuencia de mensaje debe ser enviada en este orden con su respectivos datos de activo nuevo, esto hace que se carguen todas las temporalidades y asi la funcion de escucha las capture y envíe rapidamente.
+Pero es necesario que sea en el orden que está escrita y esto se lleve a cabo por cada activo nuevo encontrado.
+
+
+además debe hacerse una lista de activos que se van integrando al flujo del escuchador en esta nueva funcion para qué también se lleve a cabo cada 7-15m los siguientes mensajes de cada activo en la lista:
+ejemplo:
+
+42["instruments/update",{"asset":"GBPUSD_otc","period":60}]
+
+42["chart_notification/get",{"asset":"GBPUSD_otc","version":"1.0.0"}]
+
+42["depth/unfollow","GBPUSD_otc"]
+
+42["depth/follow","GBPUSD_otc"]
+
+42["chart_notification/get",{"asset":"GBPUSD_otc","version":"1.0.0"}]
+
+42["settings/store",{"chartId":"graph","settings":{"chartId":"graph","chartType":2,"currentExpirationTime":1751338500,"isFastOption":false,"isFastAmountOption":false,"isIndicatorsMinimized":false,"isIndicatorsShowing":true,"isShortBetElement":false,"chartPeriod":4,"currentAsset":{"symbol":"GBPUSD_otc"},"dealValue":1,"dealPercentValue":5,"isVisible":true,"timePeriod":60,"gridOpacity":0,"isAutoScrolling":true,"isOneClickTrade":true,"upColor":"#0FAF59","downColor":"#FF6251"}}]
+
+
+estos mensajes deben enviarse por cada activo que ya está en la lista (los que entran en la lista son los que ya se están pasando el flujo de pips y que ya fue entregado el paquete de velas historicas, esos entran en la lista)
+y se va enviado no todos al mismo tiempo si no de manera inteligente en lapsos de 7-15m pero entre cada envio de uno se envían lapsos de 1m- cada envio anterior. 
+hasta refrescar todos! esto hace que se refresquen y que el flujo con sus datos continúe!

@@ -1,0 +1,10 @@
+# Plan de Mejora de Precisión del Bot de Trading
+
+## Objetivo del Jefe:
+Antes que nada para que comprendas la arquitectura del bot analiza como-funciona.txt
+luego busca la solucion sin romper la arquitectura del siguiente error:
+
+
+
+
+1- POdemos hacer que un paquete de un periodo ya haya sido enviado jamas se envíe otro? debe ser rapida esta condicion, esto por qué aveces llegan paq repetidos. esta condición debe respetar es el periodo y el activo.(esto sin mover ninguna otra cosa del bot, ademas no puedes basarte en suposiciones y cualquier modificacion debes pedirme permiso.)

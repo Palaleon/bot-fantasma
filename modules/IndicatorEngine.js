@@ -1,217 +1,319 @@
-import { RSI, SMA } from 'technicalindicators';
+// /modules/IndicatorEngine.js
+
+// CORREGIDO: Se cambió 'hammer' por el nombre de exportación correcto 'hammerpattern'.
+import { RSI, SMA, ATR, ADX, bullishengulfingpattern, bearishengulfingpattern, hammerpattern } from 'technicalindicators';
 import logger from '../utils/logger.js';
 
-/**
-<<<<<<< HEAD
- * 🧠 Motor de Indicadores Multi-Estratégico y Táctico.
- * Refactorizado para una gestión de estado robusta y cálculos correctos.
- * Ahora es consciente de la "madurez" de los datos para evitar señales prematuras.
- */
 class IndicatorEngine {
     constructor() {
-        this.strategicTimeframes = ['1m', '5m', '10m', '15m', '30m']; // CONFIGURACIÓN CORREGIDA
+        this.strategicTimeframes = ['1m', '5m', '10m', '15m', '30m'];
         this.tacticTimeframe = '5s';
-
         this.indicators = {};
 
-        // Inicialización para temporalidades estratégicas
         this.strategicTimeframes.forEach(tf => {
             this.indicators[tf] = {
-                closes: [],
+                candles: [],
                 isMature: false,
-                requiredPeriod: 25, // El período más largo de los indicadores de este timeframe
+                requiredPeriod: 25,
                 sma_slow_period: 25,
                 sma_fast_period: 10,
-                rsi_period: 14
+                rsi_period: 14,
+                atr_period: 14,
+                adx_period: 14,
+                effectiveness: {
+                    sma_cross: { score: 0.5, total: 0 },
+                    bullish_engulfing: { score: 0.5, total: 0 },
+                    bearish_engulfing: { score: 0.5, total: 0 },
+                    hammer: { score: 0.5, total: 0 } // La clave interna puede mantenerse por consistencia
+                },
+                isRecalibrating: false,
+                recalibrationThreshold: 0.45,
+                lastRecalibrationTime: 0
             };
         });
 
-        // Inicialización para la temporalidad táctica
         this.indicators[this.tacticTimeframe] = {
-            closes: [],
+            candles: [],
             isMature: false,
-            requiredPeriod: 14, // El período del RSI
+            requiredPeriod: 14,
             rsi_period: 14
         };
 
-        logger.info("INDICATOR-ENGINE: Motor inicializado con nueva arquitectura.");
+        logger.info("INDICATOR-ENGINE: Motor inicializado con v3.0 (ADX y Arsenal Chartist expandido).");
     }
 
-    /**
-     * Impregna los indicadores de una temporalidad específica con velas históricas.
-     * @param {Array<object>} historicalCandles - Velas históricas para la temporalidad.
-     * @param {string} timeframe - La temporalidad de las velas (e.g., '1m', '5m').
-     */
-    prime(historicalCandles, timeframe) {
-        if (!this.indicators[timeframe]) {
-            logger.warn(`INDICATOR-ENGINE: Intento de impregnar un timeframe no configurado: ${timeframe}`);
-            return;
+    getEffectiveness(timeframe) {
+        return this.indicators[timeframe]?.effectiveness || null;
+    }
+    
+    _simulateEffectiveness(candles, fastPeriod, slowPeriod) {
+        if (candles.length < Math.max(fastPeriod, slowPeriod) + 1) {
+            return { score: 0.5, total: 0 };
         }
 
+        const closes = candles.map(c => c.close);
+        const simulatedTrades = [];
+        const requiredSmaLength = Math.max(fastPeriod, slowPeriod);
+
+        if (closes.length < requiredSmaLength) {
+            return { score: 0.5, total: 0 };
+        }
+
+        const smaFastValues = SMA.calculate({ values: closes, period: fastPeriod });
+        const smaSlowValues = SMA.calculate({ values: closes, period: slowPeriod });
+        const fastSmaOffset = fastPeriod - 1;
+        const slowSmaOffset = slowPeriod - 1;
+        const startIndex = Math.max(fastSmaOffset, slowSmaOffset);
+
+        for (let i = startIndex + 1; i < candles.length; i++) {
+            const prevSmaFast = smaFastValues[i - 1 - fastSmaOffset];
+            const prevSmaSlow = smaSlowValues[i - 1 - slowSmaOffset];
+            const currentSmaFast = smaFastValues[i - fastSmaOffset];
+            const currentSmaSlow = smaSlowValues[i - slowSmaOffset];
+
+            if (prevSmaFast === undefined || prevSmaSlow === undefined || currentSmaFast === undefined || currentSmaSlow === undefined) {
+                continue;
+            }
+
+            const isBullishCross = (currentSmaFast > currentSmaSlow) && (prevSmaFast <= prevSmaSlow);
+            const isBearishCross = (currentSmaFast < currentSmaSlow) && (prevSmaFast >= prevSmaSlow);
+
+            if (isBullishCross) {
+                if (i + 1 < candles.length) {
+                    const nextCandle = candles[i + 1];
+                    const outcome = nextCandle.close > nextCandle.open;
+                    simulatedTrades.push(outcome);
+                }
+            } else if (isBearishCross) {
+                if (i + 1 < candles.length) {
+                    const nextCandle = candles[i + 1];
+                    const outcome = nextCandle.close < nextCandle.open;
+                    simulatedTrades.push(outcome);
+                }
+            }
+        }
+
+        if (simulatedTrades.length === 0) {
+            return { score: 0.5, total: 0 };
+        }
+
+        const successfulTrades = simulatedTrades.filter(outcome => outcome === true).length;
+        return { score: successfulTrades / simulatedTrades.length, total: simulatedTrades.length };
+    }
+
+    _recalibrateParameters(timeframe) {
         const indicatorSet = this.indicators[timeframe];
-        const closes = historicalCandles.map(c => c.close);
-        indicatorSet.closes = [...indicatorSet.closes, ...closes];
+        if (indicatorSet.isRecalibrating || indicatorSet.candles.length < indicatorSet.requiredPeriod + 1) return;
+
+        logger.info(`INDICATOR-ENGINE (${timeframe}): Iniciando proceso de recalibración...`);
+        indicatorSet.isRecalibrating = true;
+        indicatorSet.lastRecalibrationTime = Date.now();
+
+        const closes = indicatorSet.candles.map(c => c.close);
+        let bestScore = indicatorSet.effectiveness.sma_cross.score;
+        let bestFast = indicatorSet.sma_fast_period;
+        let bestSlow = indicatorSet.sma_slow_period;
+
+        for (let fast = Math.max(5, indicatorSet.sma_fast_period - 2); fast <= indicatorSet.sma_fast_period + 2; fast++) {
+            for (let slow = Math.max(15, indicatorSet.sma_slow_period - 5); slow <= indicatorSet.sma_slow_period + 5; slow++) {
+                if (slow <= fast) continue;
+
+                const { score } = this._simulateEffectiveness(closes, fast, slow);
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestFast = fast;
+                    bestSlow = slow;
+                }
+            }
+        }
+
+        if (bestFast !== indicatorSet.sma_fast_period || bestSlow !== indicatorSet.sma_slow_period) {
+            indicatorSet.sma_fast_period = bestFast;
+            indicatorSet.sma_slow_period = bestSlow;
+            logger.warn(`INDICATOR-ENGINE (${timeframe}): Parámetros recalibrados. Nuevo SMA_Fast: ${bestFast}, SMA_Slow: ${bestSlow}. Nueva efectividad simulada: ${(bestScore * 100).toFixed(1)}%.`);
+        } else {
+            logger.info(`INDICATOR-ENGINE (${timeframe}): No se encontraron mejores parámetros. Manteniendo actuales.`);
+        }
+        indicatorSet.isRecalibrating = false;
+        this.validateEffectiveness(indicatorSet.candles, timeframe);
+    }
+    
+    validateEffectiveness(candles, timeframe) {
+        const indicatorSet = this.indicators[timeframe];
+        if (!indicatorSet || !indicatorSet.effectiveness || candles.length < indicatorSet.requiredPeriod + 1) return;
+
+        const { score: smaScore, total: smaTotal } = this._simulateEffectiveness(candles, indicatorSet.sma_fast_period, indicatorSet.sma_slow_period);
+        indicatorSet.effectiveness.sma_cross = { score: smaScore, total: smaTotal };
+
+        let bullish_success = 0, bearish_success = 0, hammer_success = 0;
+        let bullish_total = 0, bearish_total = 0, hammer_total = 0;
+
+        for (let i = 1; i < candles.length - 1; i++) {
+            const candle1 = candles[i - 1];
+            const candle2 = candles[i];
+            const nextCandle = candles[i + 1];
+
+            const inputForEngulfing = { open: [candle1.open, candle2.open], high: [candle1.high, candle2.high], low: [candle1.low, candle2.low], close: [candle1.close, candle2.close] };
+            
+            const hammerLookback = 5;
+            if (i < hammerLookback) continue; 
+
+            const hammerCandles = candles.slice(i - hammerLookback, i + 1);
+            const inputForHammer = {
+                open: hammerCandles.map(c => c.open),
+                high: hammerCandles.map(c => c.high),
+                low: hammerCandles.map(c => c.low),
+                close: hammerCandles.map(c => c.close)
+            };
+
+            if (bullishengulfingpattern(inputForEngulfing)) {
+                bullish_total++;
+                if (nextCandle.close > nextCandle.open) bullish_success++;
+            }
+            if (bearishengulfingpattern(inputForEngulfing)) {
+                bearish_total++;
+                if (nextCandle.close < nextCandle.open) bearish_success++;
+            }
+            // CORREGIDO: Se llama a la función con el nombre correcto 'hammerpattern'.
+            if (hammerpattern(inputForHammer)) {
+                hammer_total++;
+                if (nextCandle.close > nextCandle.open) hammer_success++;
+            }
+        }
         
-        logger.info(`INDICATOR-ENGINE: Impregnando timeframe '${timeframe}' con ${closes.length} velas.`);
+        indicatorSet.effectiveness.bullish_engulfing = { score: bullish_total > 0 ? bullish_success / bullish_total : 0.5, total: bullish_total };
+        indicatorSet.effectiveness.bearish_engulfing = { score: bearish_total > 0 ? bearish_success / bearish_total : 0.5, total: bearish_total };
+        indicatorSet.effectiveness.hammer = { score: hammer_total > 0 ? hammer_success / hammer_total : 0.5, total: hammer_total };
 
-        // Revisa si el indicador ha madurado después de la impregnación
-        if (indicatorSet.closes.length >= indicatorSet.requiredPeriod) {
-            indicatorSet.isMature = true;
-            logger.info(`INDICATOR-ENGINE: ¡Timeframe '${timeframe}' ha madurado!`);
+        logger.warn(`INDICATOR-ENGINE (${timeframe}): Validación de efectividad completada.`);
+        logger.info(`  -> SMA Cross: ${(smaScore * 100).toFixed(1)}%`);
+        logger.info(`  -> Bullish Engulfing: ${(indicatorSet.effectiveness.bullish_engulfing.score * 100).toFixed(1)}%`);
+        logger.info(`  -> Bearish Engulfing: ${(indicatorSet.effectiveness.bearish_engulfing.score * 100).toFixed(1)}%`);
+        logger.info(`  -> Hammer: ${(indicatorSet.effectiveness.hammer.score * 100).toFixed(1)}%`);
+
+        if (smaScore < indicatorSet.recalibrationThreshold && (Date.now() - indicatorSet.lastRecalibrationTime > 3600000)) {
+            this._recalibrateParameters(timeframe);
         }
     }
 
-    /**
-     * Actualiza el conjunto de indicadores con una nueva vela en tiempo real.
-     * @param {object} candle - La vela cerrada, que incluye 'timeframe' y 'close'.
-     */
-    update(candle) {
-        const { timeframe, close } = candle;
+    _detectAndEvaluatePatterns(timeframe) {
         const indicatorSet = this.indicators[timeframe];
+        if (indicatorSet.candles.length < 2) return null;
 
-        if (!indicatorSet) {
-            return; // Ignorar velas de timeframes no monitoreados
+        const candle1 = indicatorSet.candles[indicatorSet.candles.length - 2];
+        const candle2 = indicatorSet.candles[indicatorSet.candles.length - 1];
+        
+        const inputForEngulfing = { open: [candle1.open, candle2.open], high: [candle1.high, candle2.high], low: [candle1.low, candle2.low], close: [candle1.close, candle2.close] };
+
+        const hammerLookback = 5;
+        if (indicatorSet.candles.length < hammerLookback) return null;
+
+        const hammerCandles = indicatorSet.candles.slice(-hammerLookback);
+        const inputForHammer = {
+            open: hammerCandles.map(c => c.open),
+            high: hammerCandles.map(c => c.high),
+            low: hammerCandles.map(c => c.low),
+            close: hammerCandles.map(c => c.close)
+        };
+        
+        if (bullishengulfingpattern(inputForEngulfing)) {
+            return { pattern: 'BullishEngulfing', direction: 'call', confidence: indicatorSet.effectiveness.bullish_engulfing.score };
         }
-
-        indicatorSet.closes.push(close);
-
-        // Mantiene el array de cierres con un tamaño razonable para no consumir memoria infinita
-        // Se guarda el doble del período requerido para asegurar cálculos correctos
-        const maxCloses = indicatorSet.requiredPeriod * 2;
-        if (indicatorSet.closes.length > maxCloses) {
-            indicatorSet.closes.shift(); // Elimina el más antiguo
+        if (bearishengulfingpattern(inputForEngulfing)) {
+            return { pattern: 'BearishEngulfing', direction: 'put', confidence: indicatorSet.effectiveness.bearish_engulfing.score };
         }
+        // CORREGIDO: Se llama a la función con el nombre correcto 'hammerpattern'.
+        if (hammerpattern(inputForHammer)) {
+            return { pattern: 'Hammer', direction: 'call', confidence: indicatorSet.effectiveness.hammer.score };
+        }
+        return null;
+    }
 
-        // Un indicador madura cuando tiene suficientes datos para el cálculo más largo
-        if (!indicatorSet.isMature && indicatorSet.closes.length >= indicatorSet.requiredPeriod) {
+    prime(historicalCandles, timeframe) {
+        const indicatorSet = this.indicators[timeframe];
+        if (!indicatorSet) return;
+
+        const MAX_CANDLES = 200;
+        indicatorSet.candles = historicalCandles.slice(-MAX_CANDLES);
+
+        logger.info(`INDICATOR-ENGINE (${timeframe}): Impregnado con ${indicatorSet.candles.length} velas.`);
+
+        if (indicatorSet.candles.length >= indicatorSet.requiredPeriod) {
             indicatorSet.isMature = true;
-            logger.info(`INDICATOR-ENGINE: ¡Timeframe '${timeframe}' ha madurado en tiempo real!`);
+            logger.warn(`INDICATOR-ENGINE (${timeframe}): ¡Indicadores maduros y listos para el análisis!`);
+            this.validateEffectiveness(indicatorSet.candles, timeframe);
+        } else {
+            logger.warn(`INDICATOR-ENGINE (${timeframe}): No hay suficientes velas históricas para madurar (${indicatorSet.candles.length}/${indicatorSet.requiredPeriod}).`);
         }
     }
 
-    /**
-     * Devuelve el estado actual de todos los indicadores calculados.
-     * Realiza los cálculos "al vuelo" para asegurar que siempre están actualizados.
-     * @returns {object} El estado de los indicadores estratégicos y tácticos.
-     */
+    update(candle) {
+        const { timeframe } = candle;
+        const indicatorSet = this.indicators[timeframe];
+        if (!indicatorSet) return;
+
+        indicatorSet.candles.push(candle);
+        if (indicatorSet.candles.length > 200) {
+            indicatorSet.candles.shift();
+        }
+
+        if (!indicatorSet.isMature) {
+            if (indicatorSet.candles.length >= indicatorSet.requiredPeriod) {
+                indicatorSet.isMature = true;
+                logger.warn(`INDICATOR-ENGINE (${timeframe}): ¡Indicadores maduros tras actualización en tiempo real!`);
+                this.validateEffectiveness(indicatorSet.candles, timeframe);
+            }
+        } else {
+            if (indicatorSet.candles.length % 50 === 0) {
+                this.validateEffectiveness(indicatorSet.candles, timeframe);
+            }
+        }
+    }
+
     getIndicators() {
         const strategicValues = {};
+        const chartistSignals = {};
 
         this.strategicTimeframes.forEach(tf => {
             const indicatorSet = this.indicators[tf];
             if (!indicatorSet.isMature) {
-                strategicValues[tf] = { sma_slow: null, sma_fast: null, rsi: null };
+                strategicValues[tf] = null;
+                chartistSignals[tf] = null;
             } else {
-                const smaSlowInput = { values: indicatorSet.closes, period: indicatorSet.sma_slow_period };
-                const smaFastInput = { values: indicatorSet.closes, period: indicatorSet.sma_fast_period };
-                const rsiInput = { values: indicatorSet.closes, period: indicatorSet.rsi_period };
-
-                const smaSlowResult = SMA.calculate(smaSlowInput);
-                const smaFastResult = SMA.calculate(smaFastInput);
-                const rsiResult = RSI.calculate(rsiInput);
+                const closes = indicatorSet.candles.map(c => c.close);
+                const highs = indicatorSet.candles.map(c => c.high);
+                const lows = indicatorSet.candles.map(c => c.low);
+                const atrInput = { high: highs, low: lows, close: closes, period: indicatorSet.atr_period };
+                const lookbackCandles = indicatorSet.candles.slice(-indicatorSet.requiredPeriod);
+                
+                const adxInput = { high: highs, low: lows, close: closes, period: indicatorSet.adx_period };
+                const adxResult = ADX.calculate(adxInput).slice(-1)[0];
 
                 strategicValues[tf] = {
-                    sma_slow: smaSlowResult[smaSlowResult.length - 1],
-                    sma_fast: smaFastResult[smaFastResult.length - 1],
-                    rsi: rsiResult[rsiResult.length - 1]
+                    sma_slow: SMA.calculate({ values: closes, period: indicatorSet.sma_slow_period }).slice(-1)[0],
+                    sma_fast: SMA.calculate({ values: closes, period: indicatorSet.sma_fast_period }).slice(-1)[0],
+                    rsi: RSI.calculate({ values: closes, period: indicatorSet.rsi_period }).slice(-1)[0],
+                    atr: ATR.calculate(atrInput).slice(-1)[0],
+                    support: Math.min(...lookbackCandles.map(c => c.low)),
+                    resistance: Math.max(...lookbackCandles.map(c => c.high)),
+                    adx: adxResult ? adxResult.adx : 0
                 };
+                chartistSignals[tf] = this._detectAndEvaluatePatterns(tf);
             }
         });
 
-        const tacticValues = {};
+        const tacticValues = { rsi: null };
         const tacticSet = this.indicators[this.tacticTimeframe];
-        if (!tacticSet.isMature) {
-            tacticValues.rsi = null;
-        } else {
-            const rsiInput = { values: tacticSet.closes, period: tacticSet.rsi_period };
-            const rsiResult = RSI.calculate(rsiInput);
-            tacticValues.rsi = rsiResult[rsiResult.length - 1];
+        if (tacticSet.isMature) {
+            tacticValues.rsi = RSI.calculate({ values: tacticSet.candles.map(c => c.close), period: tacticSet.rsi_period }).slice(-1)[0];
         }
 
         return {
             strategic: strategicValues,
             tactic: tacticValues,
+            chartist: chartistSignals
         };
     }
-=======
- * Motor de Indicadores Multi-Estratégico y Táctico.
- * Gestiona un conjunto de indicadores para cada temporalidad estratégica (1m, 5m, 15m)
- * y un único conjunto para la temporalidad táctica (5s).
- */
-class IndicatorEngine {
-    constructor() {
-        this.strategicTimeframes = ['1m', '5m', '15m'];
-        this.tacticTimeframe = '5s';
-
-        // Almacena un conjunto de indicadores para cada temporalidad estratégica
-        this.strategicIndicators = {};
-        this.strategicTimeframes.forEach(tf => {
-            this.strategicIndicators[tf] = {
-                sma_slow: new SMA({ period: 25, values: [] }),
-                sma_fast: new SMA({ period: 10, values: [] }),
-                rsi: new RSI({ period: 14, values: [] }),
-                values: { sma_slow: null, sma_fast: null, rsi: null }
-            };
-        });
-
-        // Indicador único para la capa táctica
-        this.tacticIndicators = {
-            rsi: new RSI({ period: 14, values: [] }),
-            values: { rsi: null }
-        };
-    }
-
-    /**
-     * Actualiza el conjunto de indicadores correcto según la temporalidad de la vela.
-     * @param {object} candle - La vela cerrada, que incluye 'timeframe'.
-     */
-    update(candle) {
-        const { timeframe, close } = candle;
-
-        if (this.strategicTimeframes.includes(timeframe)) {
-            const indicators = this.strategicIndicators[timeframe];
-            indicators.values.sma_slow = indicators.sma_slow.nextValue(close);
-            indicators.values.sma_fast = indicators.sma_fast.nextValue(close);
-            indicators.values.rsi = indicators.rsi.nextValue(close);
-        } else if (timeframe === this.tacticTimeframe) {
-            this.tacticIndicators.values.rsi = this.tacticIndicators.rsi.nextValue(close);
-        }
-    }
-
-    /**
-     * Devuelve el estado actual de los indicadores.
-     */
-    getIndicators() {
-        // Devuelve solo los valores calculados para un acceso más limpio
-        const strategicValues = {};
-        for (const tf in this.strategicIndicators) {
-            strategicValues[tf] = this.strategicIndicators[tf].values;
-        }
-
-        return {
-            strategic: strategicValues,
-            tactic: this.tacticIndicators.values,
-        };
-    }
-    
-    /**
-     * Impregna los indicadores de 1 minuto con velas históricas.
-     * @param {Array<object>} historicalCandles - Velas históricas (deben ser de 1m).
-     */
-    prime(historicalCandles) {
-        logger.info(`INDICATOR-ENGINE: Impregnando indicadores de '1m' con ${historicalCandles.length} velas...`);
-        const strategic1m = this.strategicIndicators['1m'];
-        if (strategic1m) {
-            historicalCandles.forEach(candle => {
-                const close = candle.close;
-                strategic1m.values.sma_slow = strategic1m.sma_slow.nextValue(close);
-                strategic1m.values.sma_fast = strategic1m.sma_fast.nextValue(close);
-                strategic1m.values.rsi = strategic1m.rsi.nextValue(close);
-            });
-            logger.info('INDICATOR-ENGINE: Impregnación de '1m' completada.');
-        }
-    }
->>>>>>> dba811d02d2d22e0ea200085ea62279714750e71
 }
 
 export default IndicatorEngine;
