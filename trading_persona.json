@@ -8016,6 +8016,32 @@
       },
       "timestamp": 1751482562525,
       "personaState": "CALM"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.7014732533759429,
+      "diagnosis": {
+        "source": "Consenso Total",
+        "quantitative": "Cruce SMA (Efectividad: 78%)",
+        "chartist": "BearishEngulfing (Efectividad: 63%)",
+        "context": [
+          "Volatilidad Baja",
+          "Sin soportes cercanos",
+          "Tendencia (ADX: 26.1)",
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDDZD_otc",
+      "channel": "USDDZD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcmbqta7_q25e2",
+      "executionParams": {
+        "investment": 10.45,
+        "delayMs": 1160,
+        "expiration": 1
+      },
+      "timestamp": 1751482982817,
+      "personaState": "CAUTIOUS"
     }
   ],
   "assetBehavior": {
