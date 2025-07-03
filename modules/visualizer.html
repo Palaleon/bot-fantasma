@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bot Fantasma - Dashboard Dinámico</title>
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        body { 
+            font-family: sans-serif; 
+            background-color: #121212; 
+            color: #e0e0e0; 
+            margin: 0; 
+        }
+        #dashboard-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 10px;
+        }
+        .chart-wrapper {
+            border: 1px solid #333;
+            border-radius: 5px;
+            background-color: #1A1A1A;
+        }
+        .chart-wrapper h3 {
+            margin: 10px 0 0 15px;
+            font-weight: normal;
+        }
+        .chart-container {
+            width: 600px; /* Ancho fijo para cada gráfico */
+            height: 400px; /* Alto fijo para cada gráfico */
+        }
+        #status { 
+            position: fixed; 
+            bottom: 10px; 
+            left: 10px; 
+            background: rgba(0,0,0,0.7); 
+            padding: 5px 10px; 
+            border-radius: 5px; 
+            z-index: 1000; 
+        }
+    </style>
+</head>
+<body>
+    <div id="dashboard-container"></div>
+    <div id="status">Estado: Conectando...</div>
+
+    <script>
+        const dashboardContainer = document.getElementById('dashboard-container');
+        const statusDiv = document.getElementById('status');
+        const WEBSOCKET_PORT = 3080; // Asegúrate que este sea el puerto correcto de tu bot/exporter
+
+        // =================================================================
+        // OBJETO CLAVE: Aquí guardaremos cada gráfico y su serie de velas
+        // La clave será, por ejemplo, "EURUSD_otc-1m"
+        // =================================================================
+        const chartManager = {};
+
+        function getOrCreateChart(asset, timeframe) {
+            const chartId = `${asset}-${timeframe}`;
+
+            // Si el gráfico ya existe, simplemente lo devolvemos
+            if (chartManager[chartId]) {
+                return chartManager[chartId];
+            }
+
+            // --- Si no existe, lo creamos ---
+            console.log(`Creando nuevo gráfico para: ${chartId}`);
+
+            // 1. Crear los elementos HTML
+            const wrapper = document.createElement('div');
+            wrapper.className = 'chart-wrapper';
+
+            const title = document.createElement('h3');
+            title.textContent = `${asset} (${timeframe})`;
+            wrapper.appendChild(title);
+
+            const chartContainer = document.createElement('div');
+            chartContainer.className = 'chart-container';
+            wrapper.appendChild(chartContainer);
+            
+            dashboardContainer.appendChild(wrapper);
+
+            // 2. Crear la instancia del gráfico
+            const chart = LightweightCharts.createChart(chartContainer, {
+                layout: { background: { color: '#1A1A1A' }, textColor: '#DDD' },
+                grid: { vertLines: { color: '#2C2C2C' }, horzLines: { color: '#2C2C2C' } },
+                crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+                timeScale: { timeVisible: true, secondsVisible: true },
+            });
+
+            // 3. Crear la serie de velas
+            const candleSeries = chart.addCandlestickSeries({
+                upColor: '#26a69a', downColor: '#ef5350',
+                borderDownColor: '#ef5350', borderUpColor: '#26a69a',
+                wickDownColor: '#ef5350', wickUpColor: '#26a69a',
+            });
+
+            // 4. Guardar la referencia en nuestro gestor y devolverla
+            chartManager[chartId] = { chart, candleSeries };
+            return chartManager[chartId];
+        }
+
+        // --- Lógica de Conexión WebSocket (sin cambios) ---
+        const socket = new WebSocket(`ws://localhost:${WEBSOCKET_PORT}`);
+        
+        socket.onopen = () => {
+            statusDiv.textContent = 'Estado: Conectado ✅';
+            statusDiv.style.color = '#4CAF50';
+        };
+
+        socket.onclose = () => {
+            statusDiv.textContent = 'Estado: Desconectado ❌. Intentando reconectar...';
+            statusDiv.style.color = '#F44336';
+            // Podrías añadir lógica de reconexión aquí si quieres
+        };
+
+        socket.onmessage = (event) => {
+            try {
+                const message = JSON.parse(event.data);
+                
+                if (message.type === 'candle' && message.data) {
+                    const { asset, timeframe, timestamp, open, high, low, close } = message.data;
+
+                    // 1. Obtenemos (o creamos) el gráfico correspondiente
+                    const { candleSeries } = getOrCreateChart(asset, timeframe);
+
+                    // 2. Actualizamos la serie de ese gráfico específico
+                    candleSeries.update({
+                        time: timestamp / 1000, // Timestamp debe estar en segundos
+                        open, high, low, close
+                    });
+                }
+            } catch (error) {
+                console.error('Error al procesar el mensaje:', error);
+            }
+        };
+
+    </script>
+</body>
+</html>

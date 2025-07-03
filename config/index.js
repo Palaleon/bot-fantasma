@@ -10,8 +10,8 @@ dotenv.config();
  * @property {number} humanizer.maxConsecutiveTrades
  * @property {number} humanizer.minTradeIntervalMs
  * @property {object} trading
- * @property {number} trading.minInvestment // <-- CAMBIO
- * @property {number} trading.maxInvestment // <-- CAMBIO
+ * @property {number} trading.minInvestment
+ * @property {number} trading.maxInvestment
  * @property {object} telegram
  * @property {string} telegram.botToken
  * @property {string} telegram.chatId
@@ -67,8 +67,12 @@ const config = {
     debuggingPort: parseInt(process.env.PUPPETEER_DEBUGGING_PORT, 10) || 9222,
   },
 
-  // Configuración del servidor de exportación de sockets (se mantiene tu estructura original)
-  socketExportPort: parseInt(process.env.SOCKET_EXPORT_PORT, 10) || 3000,
+  // =======================================================================
+  // CAMBIO: Puerto actualizado para prueba de conexión del visualizador
+  // =======================================================================
+  socketExportPort: parseInt(process.env.SOCKET_EXPORT_PORT, 10) || 3355,
+  // =======================================================================
+
 
   // Configuración del Harvester (se mantiene tu estructura original)
   harvester: {

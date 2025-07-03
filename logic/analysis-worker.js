@@ -3,22 +3,15 @@ import logger from '../utils/logger.js';
 import ChannelManager from '../modules/ChannelManager.js';
 import timeSyncManager from '../utils/TimeSyncManager.js'; // Importar el sincronizador
 
-logger.info('WORKER-ANALYSIS v1.1: Worker de Análisis con Sincronización de Tiempo iniciado.');
+logger.info('WORKER-ANALYSIS v1.2: Worker de Análisis con Sincronización de Tiempo y Timeframe Unificado iniciado.');
 
 // Inyectamos la función de tiempo corregido en el ChannelManager
 const manager = new ChannelManager(() => timeSyncManager.getCorregido());
 
 const primingStatus = {};
 
-const timeframeMap = {
-  60: '1m',
-  300: '5m',
-  600: '10m',
-  900: '15m',
-  1800: '30m'
-};
-
-const EXPECTED_TIMEFRAMES_COUNT = Object.keys(timeframeMap).length;
+// El timeframeMap ya no es necesario aquí, la normalización se hace en TCPConnector.
+const EXPECTED_TIMEFRAMES_COUNT = 5; // Se define estáticamente: 1m, 5m, 10m, 15m, 30m
 
 parentPort.on('message', (msg) => {
   try {
@@ -55,11 +48,14 @@ parentPort.on('message', (msg) => {
         break;
       
       case 'prime-indicators': {
-        const { asset: primeAsset, candles: historicalCandles, timeframe: tfSeconds } = msg.data;
-        const tfString = timeframeMap[tfSeconds];
+        // --- CORRECCIÓN ---
+        // Se desestructura el timeframe directamente como una cadena de texto (tfString).
+        // Ya no se necesita el mapeo local porque TCPConnector ya ha normalizado el formato.
+        const { asset: primeAsset, candles: historicalCandles, timeframe: tfString } = msg.data;
         
         logger.warn(`WORKER-ANALYSIS: Recibido paquete de ${historicalCandles.length} velas para ${primeAsset} (${tfString}). Impregnando... [${(primingStatus[primeAsset] || 0) + 1}/${EXPECTED_TIMEFRAMES_COUNT}]`, { asset: primeAsset });
 
+        // La validación ahora comprueba directamente tfString.
         if (!primeAsset || !tfString || !historicalCandles || historicalCandles.length === 0) {
           logger.error('WORKER-ANALYSIS: Datos históricos inválidos, vacíos o sin timeframe válido.');
           return;
@@ -71,6 +67,8 @@ parentPort.on('message', (msg) => {
 
         const channel = manager.getChannel(primeAsset, true);
         const sortedCandles = historicalCandles.sort((a, b) => a.time - b.time);
+        
+        // Se pasa tfString directamente al motor de indicadores.
         channel.indicatorEngine.prime(sortedCandles, tfString);
         logger.info(`WORKER-ANALYSIS: Indicadores para ${primeAsset} (${tfString}) impregnados con éxito.`, { asset: primeAsset });
 

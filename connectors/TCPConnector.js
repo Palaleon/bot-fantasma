@@ -3,6 +3,16 @@ import { EventEmitter } from 'events';
 import logger from '../utils/logger.js';
 import timeSyncManager from '../utils/TimeSyncManager.js'; // Importar el sincronizador
 
+// Mapeo de temporalidades de segundos a formato de texto estándar
+const timeframeMap = {
+    5: '5s',
+    60: '1m',
+    300: '5m',
+    600: '10m',
+    900: '15m',
+    1800: '30m'
+};
+
 class TCPConnector extends EventEmitter {
   constructor(port, host) {
     super();
@@ -48,13 +58,43 @@ class TCPConnector extends EventEmitter {
           const parsed = JSON.parse(messageString);
           const asset = parsed.payload ? parsed.payload.asset : undefined;
 
-          logger.debug(`Mensaje parseado: ${JSON.stringify(parsed)}`, { asset });
+          //logger.debug(`Mensaje parseado: ${JSON.stringify(parsed)}`, { asset });
 
           if (parsed.type && parsed.payload) {
+            // --- INICIO DE LA NORMALIZACIÓN ---
+            // Estandariza el timeframe a formato de texto si viene como número.
+            // Esto es crucial para que los módulos como IndicatorEngine y ChannelManager
+            // no creen duplicados para el mismo intervalo (ej. 60 y '1m').
+            if (parsed.payload.timeframe && typeof parsed.payload.timeframe === 'number') {
+                const originalTimeframe = parsed.payload.timeframe;
+                const mappedTimeframe = timeframeMap[originalTimeframe];
+                if (mappedTimeframe) {
+                    logger.debug(`Normalizando timeframe numérico ${originalTimeframe} a '${mappedTimeframe}' para el activo ${asset}.`, { asset });
+                    parsed.payload.timeframe = mappedTimeframe;
+                } else {
+                    logger.warn(`Timeframe numérico ${originalTimeframe} no tiene un mapeo a texto.`, { asset });
+                }
+            }
+
+            // Si el payload contiene un array de velas (caso de datos históricos),
+            // se normaliza el timeframe de cada vela individualmente.
+            if (Array.isArray(parsed.payload.candles)) {
+                parsed.payload.candles.forEach(candle => {
+                    if (candle.timeframe && typeof candle.timeframe === 'number') {
+                        const originalTimeframe = candle.timeframe;
+                        const mappedTimeframe = timeframeMap[originalTimeframe];
+                        if (mappedTimeframe) {
+                            candle.timeframe = mappedTimeframe;
+                        }
+                    }
+                });
+            }
+            // --- FIN DE LA NORMALIZACIÓN ---
+
             if (parsed.type === 'pip' && parsed.payload.timestamp) {
               const brokerTimestampMs = parsed.payload.timestamp * 1000;
               timeSyncManager.update(brokerTimestampMs);
-              logger.debug(`Pip detectado. ID: ${parsed.payload.sequence_id}, Timestamp: ${parsed.payload.timestamp}, Precio: ${parsed.payload.price}`, { asset });
+              logger.info(`PIP Recibido: ${parsed.payload.price} | ID: ${parsed.payload.sequence_id}`, { asset: parsed.payload.asset });
             }
             this.emit(parsed.type, parsed.payload);
           } else {

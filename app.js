@@ -156,10 +156,12 @@ class TradingBotFantasmaV4 {
       this.tcpConnector.on('historical-candles', (payload) => {
         logger.warn(`[APP] Datos históricos para ${payload.asset} (${payload.timeframe}s) recibidos. Enviando a workers...`);
         this.analysisWorker.postMessage({ type: 'prime-indicators', data: payload });
+		this.socketExporter.broadcast({ type: 'historical-candles', data: payload });
       });
       this.pipWorker.on('message', (msg) => {
         if (msg.type === 'candleClosed') {
           this.analysisWorker.postMessage({ type: 'candle', data: msg.data });
+		  this.socketExporter.broadcast({ type: 'candle', data: msg.data });
         }
       });
       this.analysisWorker.on('message', (msg) => { 
