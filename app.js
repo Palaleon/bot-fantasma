@@ -11,6 +11,7 @@ import Operator from './modules/Operator.js';
 import { logEmitter } from './utils/logger.js';
 import Humanizer from './modules/Humanizer.js';
 import QXWebSocketTrader from './modules/QXWebSocketTrader.js';
+import TradeResultManager from './modules/TradeResultManager.js';
 
 puppeteer.use(StealthPlugin());
 
@@ -26,25 +27,69 @@ class TradingBotFantasmaV4 {
     this.pipWorker = null;
     this.analysisWorker = null;
     this.socketExporter = null;
+	this.tradeResultManager = null;
   }
 
   async initializeBrowser() {
-    logger.info('🔌 Conectando con el navegador...');
-    try {
-      const browserURL = `http://127.0.0.1:${config.puppeteer.debuggingPort}`;
-      this.browser = await puppeteer.connect({ browserURL });
-      const pages = await this.browser.pages();
-      this.page = pages.find(p => p.url().includes(config.broker.url));
+    logger.info('🚀 Iniciando navegador para login manual...');
+    const braveExecutablePath = `C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe`;
+    const userDataDir = './bot_browser_profile'; // Directorio para el perfil del bot
 
-      if (!this.page) {
-        logger.warn(`No se encontró página de trading. Usando la primera disponible.`);
-        this.page = pages[0];
-        if (!this.page) throw new Error("No se encontró ninguna página en el navegador.");
+    try {
+      logger.info(`Lanzando Brave con perfil de usuario dedicado en: ${userDataDir}`);
+      this.browser = await puppeteer.launch({
+        executablePath: braveExecutablePath,
+        headless: false,
+        userDataDir: userDataDir, // Usar un perfil dedicado
+        args: [
+          '--no-first-run',
+          '--no-default-browser-check',
+          '--start-maximized'
+        ]
+      });
+
+      this.page = (await this.browser.pages())[0] || await this.browser.newPage();
+      
+      logger.info(`Navegando a la página del broker: ${config.broker.url}`);
+      await this.page.goto(config.broker.url, { waitUntil: 'networkidle2' });
+
+      // Comprobar si ya se ha iniciado sesión desde el perfil persistente
+      if (this.page.url().includes(config.broker.url) && !this.page.url().includes('sign-in')) {
+        logger.warn('✅ Sesión ya activa en el perfil del bot. Login no fue necesario.');
+        logger.info(`Página de operaciones lista: ${this.page.url()}`);
+      } else {
+        // Si no se ha iniciado sesión, solicitar al usuario
+        logger.warn('🛑 ACCIÓN REQUERIDA: Por favor, inicie sesión en la ventana de Brave.');
+        logger.warn('Una vez que haya iniciado sesión y vea la página de trading, presione la tecla ENTER en esta consola para continuar...');
+
+        // Esperar a que el usuario presione Enter
+        await new Promise(resolve => {
+          process.stdin.once('data', () => {
+            resolve();
+          });
+        });
+
+        // Después de que el usuario presione enter, verificar que el login fue exitoso
+        const pages = await this.browser.pages();
+        this.page = pages.find(p => p.url().includes(config.broker.url) && !p.url().includes('sign-in'));
+
+        if (!this.page) {
+          // Si no se encuentra, puede que la página activa sea la correcta
+          this.page = pages[pages.length - 1];
+          if (this.page.url().includes('sign-in')) {
+            throw new Error('El login manual falló o no se completó. La página sigue en el formulario de acceso.');
+          }
+        }
+         
+        logger.warn('✅ ¡Éxito! El bot continuará con la sesión iniciada manualmente.');
+        logger.info(`Página de operaciones lista: ${this.page.url()}`);
       }
-      logger.info(`✅ Página de operaciones lista: ${this.page.url()}`);
+
     } catch (error) {
-      logger.error(`❌ Error al conectar con el navegador: ${error.stack}`);
-      throw error;
+      logger.error(`❌ FALLO CRÍTICO DURANTE EL INICIO DEL NAVEGADOR O LOGIN: ${error.message}`);
+      logger.error('El bot no puede continuar. Terminando proceso.');
+      if (this.browser) await this.browser.close();
+      process.exit(1);
     }
   }
 
@@ -80,16 +125,20 @@ class TradingBotFantasmaV4 {
 	  logger.info("DEBUG: Llamada a initializeListeners completada desde app.js.");
       logger.info('✅ Conexión con WebSocket establecida y escuchando resultados.');
 
+      
+      // 1. Creamos todos los componentes, incluyendo nuestro nuevo "cerebro de evaluacion de resultados de trades"
       this.telegramConnector = new TelegramConnector();
-      this.operator = new Operator(this.webSocketTrader, this.telegramConnector);
+      this.tradeResultManager = new TradeResultManager(); // ¡Aquí nace!
+      this.operator = new Operator(this.webSocketTrader, this.telegramConnector, null, this.tradeResultManager); // Le pasamos el cerebro al Operator
       this.humanizer = new Humanizer(this.telegramConnector);
       this.pipWorker = new Worker('./logic/pip-worker.js');
       this.analysisWorker = new Worker('./logic/analysis-worker.js');
       this.socketExporter = new SocketExporter(config.socketExportPort);
       this.tcpConnector = new TCPConnector(config.harvester.port, config.harvester.host);
 
-      logger.info('🔗 Conectando el flujo de datos...');
-      
+      logger.info('🔗 Conectando el nuevo flujo de datos inteligente...');
+
+      // La lógica de los workers no cambia
       const workersReady = Promise.all([
         new Promise(resolve => this.pipWorker.on('message', (msg) => { if (msg.type === 'started') resolve(); })),
         new Promise(resolve => this.analysisWorker.on('message', (msg) => { if (msg.type === 'started') resolve(); }))
@@ -98,41 +147,57 @@ class TradingBotFantasmaV4 {
       this.analysisWorker.postMessage({ type: 'start' });
       await workersReady;
       logger.info('✅ Workers de Pips y Análisis listos.');
-
+      
+      // La lógica de recibir datos del Harvester tampoco cambia
       this.tcpConnector.on('pip', (payload) => {
         this.pipWorker.postMessage({ type: 'pip', data: payload });
         this.socketExporter.broadcast({ type: 'pip', data: payload });
       });
-
       this.tcpConnector.on('historical-candles', (payload) => {
         logger.warn(`[APP] Datos históricos para ${payload.asset} (${payload.timeframe}s) recibidos. Enviando a workers...`);
         this.analysisWorker.postMessage({ type: 'prime-indicators', data: payload });
       });
-
       this.pipWorker.on('message', (msg) => {
         if (msg.type === 'candleClosed') {
           this.analysisWorker.postMessage({ type: 'candle', data: msg.data });
         }
       });
-      
       this.analysisWorker.on('message', (msg) => { 
         if (msg.type === 'signal') this.humanizer.analyzeSignal(msg.data);
       });
-
       this.humanizer.on('decisionFinal', (decision) => {
         if (decision.approved) {
           this.operator.executeApprovedTrade(decision.signal);
         }
       });
-      
-      this.operator.on('tradeCompleted', (tradeData) => {
-        // ¡CONEXIÓN DE APRENDIZAJE!
-        // Notificamos al Humanizer sobre el resultado para que pueda aprender.
+
+      // 2. Conectamos los "oídos" (WebSocketTrader) al "cerebro" (Manager)
+      // Cuando el oído detecta una apertura, le avisa al cerebro para que mapee el ID.
+      this.webSocketTrader.on('tradeOpened', ({ requestId, uniqueId }) => {
+        this.tradeResultManager.mapTradeId(requestId, uniqueId);
+      });
+
+      // Cuando el oído detecta una lista de resultados, se la pasa al cerebro para que la procese.
+      this.webSocketTrader.on('tradeResult', (resultData) => {
+        if (resultData && resultData.deals) {
+          this.tradeResultManager.processResults(resultData.deals);
+        }
+      });
+
+      // 3. La conexión de aprendizaje ahora escucha al "cerebro"
+      // El evento 'tradeCompleted' ahora lo emite el Manager, no el Operator.
+      this.tradeResultManager.on('tradeCompleted', (tradeData) => {
+        // Notificamos al Humanizer para que aprenda (esto no cambia)
         this.humanizer.processTradeResult(tradeData);
         
-        // El resto de la lógica para este evento no cambia
         logger.info(`APP: Trade completado. Resultado: ${tradeData.isWin ? 'GANADA' : 'PERDIDA'}`);
         this.socketExporter.broadcast({ type: 'tradeResult', data: tradeData });
+
+        // Recuperamos la notificación de resultado de Telegram que quitamos del Operator
+        const header = tradeData.isWin ? '🎉 *¡RESULTADO EXITOSO!* 🎉' : '💔 *RESULTADO REGISTRADO* 💔';
+        const resultText = tradeData.isWin ? '*VICTORIA* ✅' : '*PÉRDIDA, SEGUIMOS ANALIZANDO CHICOS - BOT FANTASMA* ❌';
+        const message = `\n${header}\n\n*ID de Orden*: \`${tradeData.signal.requestId}\`\n*Resultado*: ${resultText}\n    `;
+        this.telegramConnector.sendMessage(message, { parse_mode: 'Markdown' });
       });
 
       logEmitter.on('log', (logData) => {

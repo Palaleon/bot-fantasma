@@ -1,28 +1,44 @@
-## Bot Fantasma v4.0 - Plataforma de Trading Híbrida de Alta Frecuencia
+## Bot Fantasma v14.1 - Plataforma de Trading Sincronizada
 
-Bot de trading autónomo que utiliza una arquitectura de análisis híbrida (Estratégico-Táctico) para maximizar la precisión de las señales. Intercepta directamente el WebSocket del broker para una latencia mínima y opera en un sistema multicanal concurrente.
+Bot de trading autónomo que utiliza una arquitectura de análisis de contexto y un sistema de sincronización de tiempo dinámico para maximizar la precisión y fiabilidad de las operaciones.
 
-### Arquitectura Híbrida v4.0
+### Arquitectura y Mejoras Clave (v14.1)
 
-El núcleo del bot es el **IndicatorEngine v4.0**, que funciona en dos capas:
+1.  **Sincronizador de Tiempo Dinámico:**
+    - El bot calibra su reloj interno en tiempo real con cada pip recibido del bróker, eliminando el desfase de tiempo acumulado.
+    - Todas las decisiones, desde la construcción de velas hasta la ejecución de órdenes, se basan en una única línea de tiempo de alta precisión, sincronizada con el mercado.
 
-1.  **Capa Estratégica:** Analiza velas de largo plazo (1m, 5m, 15m) para identificar la tendencia general del mercado y las oportunidades de alta probabilidad.
-2.  **Capa Táctica:** Utiliza velas de alta frecuencia (5s) para medir el "momentum" inmediato del mercado. Una señal estratégica solo se aprueba si el momentum táctico confirma la dirección, filtrando eficazmente las malas entradas.
+2.  **Análisis de Contexto de Mercado:**
+    - El `IndicatorEngine` no solo busca señales, sino que entiende el contexto del mercado (tendencia vs. rango) usando el indicador ADX.
+    - Las señales son filtradas y validadas según el régimen de mercado y la confluencia entre múltiples temporalidades, evitando trampas comunes.
 
-**Flujo de Datos:**
+3.  **Lógica de Decisión Calibrada:**
+    - Los filtros de confianza han sido ajustados para ser estrictos pero realistas, permitiendo al bot capitalizar oportunidades válidas sin sufrir de "parálisis por perfección".
+
+4.  **Arranque Autónomo con Login Asistido:**
+    - El bot se ejecuta en una instancia de navegador independiente con un perfil dedicado, y solicita al usuario que inicie sesión manualmente para una máxima seguridad y simplicidad.
+
+### Flujo de Datos Sincronizado
 
 ```mermaid
 graph TD
-    A[WebSocket Broker] -->|Pips| B(PipReceiver)
-    B --> C{pip-worker}
-    C -->|Velas (5s, 1m, 5m, 15m)| D{analysis-worker}
-    D --> E[ChannelManager]
-    E --> F[TradingChannel por Activo]
-    F --> G[IndicatorEngine v4.0 Híbrido]
-    G --> H[Humanizer]
-    H --> I[Operator]
-    I --> J[BrokerConnector]
-    I --> K[TelegramConnector]
+    A[WebSocket Broker] -->|Pip con Timestamp Original| B(TCPConnector)
+    B --> C(TimeSyncManager)
+    B --> D{pip-worker}
+    D -->|Velas Precisas| E{analysis-worker}
+    E --> F[ChannelManager]
+    F --> G[ChannelWorker por Activo]
+    G --> H[IndicatorEngine]
+    H --> I[Humanizer]
+    I --> J[Operator]
+    J --> K[BrokerConnector]
+    J --> L[TelegramConnector]
+
+    subgraph Sincronización
+        C --Corrige el tiempo de--> D
+        C --Corrige el tiempo de--> E
+        C --Corrige el tiempo de--> J
+    end
 ```
 
 ### Estructura del Proyecto
@@ -30,19 +46,12 @@ graph TD
 ```
 /bot-fantasma
 ├── /config/              # Configuración centralizada
-├── /connectors/          # Conectores (Broker, Telegram)
-├── /logic/               # Lógica de negocio y workers
-│   ├── analysis-worker.js  # Worker para el análisis de señales
-│   ├── pip-worker.js       # Worker para la construcción de velas
-│   └── CandleBuilder.js    # Lógica de construcción de velas
-├── /modules/             # Componentes principales del bot
-│   ├── IndicatorEngine.js  # [v4.0] Motor de análisis híbrido
-│   ├── ChannelManager.js   # Gestor de canales de trading
-│   ├── Humanizer.js        # Capa de "sentido común" y anti-detección
-│   ├── Operator.js         # Ejecutor de operaciones
-│   └── ...               # Otros módulos de soporte
-├── /utils/               # Utilidades (Logger, StateManager, TimeUtils)
+├── /connectors/          # Conectores (TCP, Telegram)
+├── /logic/               # Lógica de negocio y workers (pip-worker, analysis-worker)
+├── /modules/             # Componentes principales (ChannelManager, IndicatorEngine, Operator)
+├── /utils/               # Utilidades (Logger, StateManager, TimeSyncManager)
 ├── app.js                # Punto de entrada principal de la aplicación
+├── harvester.py          # Script de Python que captura los datos del bróker
 ├── package.json          # Dependencias del proyecto
 └── ...
 ```
@@ -51,30 +60,25 @@ graph TD
 
 **Requisitos:**
 *   Node.js v18+
-*   Una instancia de Chrome/Chromium ejecutándose con el flag `--remote-debugging-port=9222`
+*   Python 3.8+
+*   Navegador Brave
 
 **Pasos:**
 
-1.  **Clonar el repositorio:**
-    ```bash
-    git clone https://github.com/Palaleon/bot-fantasma.git
-    cd bot-fantasma
-    ```
-2.  **Instalar dependencias:**
+1.  **Instalar dependencias de Node.js:**
     ```bash
     npm install
     ```
-3.  **Iniciar Chrome con el puerto de depuración:**
-    *   **Windows:** `"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222`
-    *   **Linux/Mac:** `google-chrome --remote-debugging-port=9222`
-4.  **Iniciar el bot:**
+2.  **Instalar dependencias de Python:**
+    ```bash
+    pip install asyncio playwright
+    ```
+3.  **Iniciar el Harvester (recolector de datos):**
+    ```bash
+    python harvester.py
+    ```
+4.  **Iniciar el Bot (en otra terminal):**
     ```bash
     npm start
     ```
-
-### Roadmap Futuro
-
-- [ ] **Optimización Táctica:** Usar el flujo de pips en tiempo real para la ejecución de órdenes (actualmente se usa para construir velas).
-- [ ] **Dashboard Web:** Crear una interfaz web para monitorear el estado del bot en tiempo real.
-- [ ] **Machine Learning:** Integrar un modelo de ML para la ponderación dinámica de indicadores.
-- [ ] **Soporte Multi-Broker:** Abstraer la lógica de conexión para soportar múltiples brokers.
+    El bot abrirá una ventana de Brave. Inicie sesión en el bróker y luego presione Enter en la consola del bot para continuar.

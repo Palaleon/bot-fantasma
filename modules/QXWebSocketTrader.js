@@ -79,14 +79,34 @@ class QXWebSocketTrader extends EventEmitter {
 
         // Intentamos procesar el mensaje binario/de resultado
         try {
+            // Primero, limpiamos cualquier caracter binario raro que venga al inicio.
             const cleanText = payload.replace(/^[\x00-\x1F\x7F-\x9F]+/, '');
             const parsedData = JSON.parse(cleanText);
 
-            if (parsedData && parsedData.deals && Array.isArray(parsedData.deals)) {
-               logger.info('[Oído CDP] ¡Resultado de operación detectado!');
-               this.emit('tradeResult', parsedData);
+            // AHORA VIENE LA MAGIA: ¿Qué tipo de mensaje es?
+            
+            // CASO 1: Es el mensaje de APERTURA de operación.
+            // Lo identificamos porque tiene un 'requestId' y un 'id' único. 
+            if (parsedData && parsedData.requestId && parsedData.id) {
+                logger.info(`[Oído CDP] ✅ ¡Apertura de operación detectada! Mapeando ID [${parsedData.id}] con Request [${parsedData.requestId}].`);
+                // Emitimos un nuevo evento que nuestro TradeResultManager escuchará.
+                this.emit('tradeOpened', { 
+                    requestId: parsedData.requestId, 
+                    uniqueId: parsedData.id 
+                });
             }
-        } catch (e) { /* Ignorar mensajes que no son JSON de resultados */ }
+
+            // CASO 2: Es el mensaje de RESULTADO FINAL (una lista de operaciones).
+            // Lo identificamos porque es un array y los elementos tienen 'profit'. 
+            else if (Array.isArray(parsedData) && parsedData.length > 0 && parsedData[0].hasOwnProperty('profit')) {
+                logger.info(`[Oído CDP] 📊 ¡Resultados finales detectados! ${parsedData.length} trade(s) en la lista.`);
+                // Emitimos el evento de siempre, que ahora también escuchará el TradeResultManager.
+                this.emit('tradeResult', { deals: parsedData });
+            }
+            
+        } catch (e) {
+            // Ignoramos los mensajes que no son JSON, como los pings del servidor. No son errores.
+        }
       });
 
       logger.info('[Híbrido] ✅ El "Oído de Harvester" está activo y escuchando resultados.');

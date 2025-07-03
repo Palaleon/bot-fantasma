@@ -5,6 +5,4 @@ Antes que nada para que comprendas la arquitectura del bot analiza como-funciona
 luego busca la solucion sin romper la arquitectura del siguiente error:
 
 
-
-
-1- POdemos hacer que un paquete de un periodo ya haya sido enviado jamas se envíe otro? debe ser rapida esta condicion, esto por qué aveces llegan paq repetidos. esta condición debe respetar es el periodo y el activo.(esto sin mover ninguna otra cosa del bot, ademas no puedes basarte en suposiciones y cualquier modificacion debes pedirme permiso.)
+1- hacer un grafico de velas con las temporalidades y velas que el bot procesa, con la intención de ver de manera visual lo que el bot hace y ve.

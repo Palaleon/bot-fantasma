@@ -77,7 +77,7 @@ class ChannelWorker extends EventEmitter {
         // === INICIO ACTUALIZACIÓN v3.0: Aplicar filtro ADX ===
         if (quantitativeSignal && !isTrending) {
             // Si la señal es cuantitativa (cruce de SMA) pero el mercado no está en tendencia, se penaliza.
-            quantitativeSignal.confidence -= 0.3; // Fuerte penalización
+            quantitativeSignal.confidence -= 0.1; // Penalización ajustada
             quantitativeSignal.context.push(`Rango (ADX: ${adxValue.toFixed(1)})`);
         } else if (quantitativeSignal) {
             quantitativeSignal.context.push(`Tendencia (ADX: ${adxValue.toFixed(1)})`);

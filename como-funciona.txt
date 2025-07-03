@@ -1,50 +1,40 @@
-# Análisis Funcional y Arquitectónico del Bot Fantasma v13.0 (Estratega de Contexto)
+# Análisis Funcional y Arquitectónico del Bot Fantasma v14.1 (El Sincronizador Preciso)
 
 ## Introducción
 
-El Bot Fantasma v13.0 marca un salto cualitativo hacia un trading basado en el contexto. La arquitectura de componentes se mantiene, pero el núcleo de la toma de decisiones ha sido reforzado con múltiples capas de análisis que le permiten al bot no solo ver una señal, sino entender el "ambiente" completo del mercado antes de actuar.
+El Bot Fantasma v14.1 hereda la robusta arquitectura de su predecesor e introduce una mejora crítica para la precisión de las operaciones: un **Sincronizador de Tiempo Dinámico**.
 
-## 1. Arquitectura de Componentes y Flujo de Decisiones
+## 1. Flujo de Arranque y Autenticación
 
-El flujo de datos (**Harvester** → **TCPConnector** → **pip-worker**) y la gestión de canales (**ChannelManager**) siguen siendo los pilares de la operación. La revolución se centra en cómo el **ChannelWorker** utiliza la información que ahora le provee el **IndicatorEngine**.
+El sistema de **login manual asistido** se mantiene sin cambios, garantizando la independencia y seguridad del bot al utilizar un perfil de navegador dedicado.
 
-### El IndicatorEngine (Cerebro Analítico v3.0)
+## 2. Arquitectura de Componentes y Flujo de Decisiones
 
-El motor ahora es un proveedor de análisis de cuatro capas, añadiendo una inteligencia crucial sobre la condición del mercado:
+El flujo de datos (`Harvester` -> `TCPConnector` -> `pip-worker`) y la lógica de análisis (`ChannelWorker`, `IndicatorEngine`) siguen siendo los pilares del sistema. Sin embargo, toda la cadena de eventos ahora opera sobre una línea de tiempo unificada y de alta precisión.
 
-**a) Análisis Cuantitativo:** Basado en indicadores clásicos como SMA y RSI.
+### NUEVO: El Sincronizador de Tiempo Dinámico (utils/TimeSyncManager.js)
 
-**b) Análisis de Contexto de Mercado:** Mide la volatilidad (ATR) y los niveles de soporte/resistencia dinámicos.
+Esta es la mejora clave de la v14.1. Para eliminar el "desfase de tiempo" (latencia) que se acumula a medida que los datos viajan por el sistema, se ha implementado un gestor de tiempo central.
 
-**c) Análisis de Régimen de Mercado (NUEVO):** Mide la fuerza y dirección de la tendencia usando el indicador ADX (Average Directional Index). Esto le permite al bot saber si el mercado está en una tendencia clara o en un rango lateral.
+**a) El Problema:** Anteriormente, cada módulo (`pip-worker`, `analysis-worker`, `Operator`) usaba su propio reloj local (`Date.now()`). Esto creaba pequeñas pero significativas discrepancias entre el momento real de un evento de mercado y el momento en que el bot actuaba sobre él.
 
-**d) Análisis Chartist Expandido (NUEVO):** Ahora detecta un arsenal más amplio de patrones de velas, incluyendo Engulfing y Hammer, y valida la efectividad histórica de cada uno de forma independiente.
+**b) La Solución:**
+1.  **Fuente de Verdad:** El `harvester.py` captura el timestamp original que el bróker incluye en cada `pip` (dato de precio).
+2.  **Calibración Constante:** El `TCPConnector.js` recibe este timestamp y lo usa para alimentar al `TimeSyncManager`. Este módulo compara continuamente el tiempo del bróker con el reloj local del bot y calcula un "desfase" promedio.
+3.  **Tiempo Corregido:** Todos los demás módulos del bot (workers, operator) ya no llaman a `Date.now()`. En su lugar, solicitan el tiempo al `TimeSyncManager`, que les devuelve el tiempo local actual **corregido con el desfase calculado**.
 
-### El ChannelWorker (El Jefe de Estrategia v3.0)
+**c) El Resultado:** Las velas se construyen, las señales se generan y las órdenes se envían utilizando una única línea de tiempo coherente y sincronizada con el mercado. Esto aumenta drásticamente la precisión del bot, especialmente la fiabilidad del `requestId` para verificar los resultados de las operaciones.
 
-Aquí es donde la nueva inteligencia cobra vida. El ChannelWorker ya no solo busca un consenso simple; ahora actúa como un estratega que aplica una secuencia de filtros de alta precisión antes de tomar una decisión:
+### El ChannelWorker (El Estratega Calibrado)
 
-#### Paso 1: Generación de Señales Base
-El worker, como antes, recibe las posibles señales del análisis cuantitativo (cruce de SMAs) y del análisis chartista (patrones de velas).
+La lógica de filtros de precisión se mantiene, pero ha sido calibrada para ser más efectiva.
 
-#### Paso 2: Aplicación de Filtros de Precisión (La Novedad Clave)
-Antes de evaluar la confianza final, cada señal debe pasar por dos nuevos filtros críticos:
+**Filtro de Régimen de Mercado (ADX) Ajustado:** La penalización de confianza por operar en un mercado sin tendencia ha sido reducida. Este ajuste evita la "parálisis por perfección", permitiendo al bot ejecutar operaciones en condiciones estrictas pero realistas, mejorando su capacidad para encontrar oportunidades válidas.
 
-**Filtro de Régimen de Mercado (ADX):** Si una señal se basa en un cruce de SMAs (una estrategia de seguimiento de tendencia), pero el ADX indica que el mercado está en rango (sin tendencia), la confianza de esa señal se penaliza fuertemente. Esto evita entrar en operaciones basadas en "falsas rupturas" que son comunes en mercados laterales.
+## 3. Inteligencia Adaptativa y Auto-Corrección
 
-**Filtro de Confluencia de Temporalidades:** Si se genera una señal en una temporalidad corta (ej. 1m), el bot comprueba si la tendencia en la temporalidad inmediatamente superior (ej. 5m) apoya la operación. Si la señal de 1m va en contra de la "marea" principal de 5m, la confianza se penaliza, evitando así luchar contra la tendencia general del mercado.
+Los mecanismos de aprendizaje y auto-calibración de parámetros se mantienen sin cambios, pero ahora se benefician de la mayor precisión temporal de los datos que analizan.
 
-#### Paso 3: Decisión Final Basada en Consenso Filtrado
-Solo después de que las señales han sido calificadas por los filtros anteriores, el bot busca el consenso. La confianza de una señal ahora refleja no solo su validez técnica, sino también si fue generada en el ambiente de mercado correcto y si está alineada con el panorama general.
+## 4. Conclusión
 
-## 2. Inteligencia Adaptativa y Auto-Corrección
-
-Los mecanismos de aprendizaje se mantienen y se benefician de la nueva estructura:
-
-**Validación de Efectividad Histórica:** Ahora se aplica a un arsenal más amplio de patrones chartist.
-
-**Auto-Calibración de Parámetros:** Sigue afinando los parámetros de los indicadores para adaptarse al ritmo del mercado.
-
-## 3. Conclusión
-
-En resumen, el Bot Fantasma v13.0 ha evolucionado de ser un analista técnico a ser un estratega de mercado. Su capacidad para entender el contexto (tendencia vs. rango), alinear sus operaciones con la tendencia mayor y validar un arsenal más amplio de patrones, aumenta drásticamente su precisión y su capacidad para evitar las "trampas" del mercado.
+El Bot Fantasma v14.1 es más preciso y fiable que nunca. Al operar en una línea de tiempo sincronizada dinámicamente con el bróker y con una lógica de decisión calibrada, el bot puede tomar decisiones más rápidas, más seguras y con una mayor correlación con los eventos reales del mercado.

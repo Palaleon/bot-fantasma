@@ -1,14 +1,14 @@
 import { parentPort } from 'worker_threads';
 import logger from '../utils/logger.js';
 import CandleBuilder from './CandleBuilder.js';
+import timeSyncManager from '../utils/TimeSyncManager.js';
 
-logger.info('WORKER-PIP v2.0: Worker de Pips Multi-Temporalidad iniciado.');
+logger.info('WORKER-PIP v2.2: Worker de Pips con Secuenciador y Sincronización de Tiempo iniciado.');
 
-// Objeto para almacenar builders por activo y por temporalidad
-// Estructura: { "EURUSD_otc": { "5s": CandleBuilder, "1m": CandleBuilder, ... } }
 const assetBuilders = {};
+const expectedSequenceIds = {}; // Almacena el próximo ID esperado por activo
+const pipBuffers = {}; // "Sala de espera" para pips fuera de orden
 
-// Define las temporalidades que vamos a construir
 const timeframes = {
     '5s': 5,
     '1m': 60,
@@ -16,17 +16,16 @@ const timeframes = {
     '15m': 900
 };
 
-// Función para asegurar que todos los builders de un activo existen
 const ensureAssetBuilders = (asset) => {
   if (!assetBuilders[asset]) {
     logger.info(`WORKER-PIP: Creando juego de CandleBuilders para nuevo activo: ${asset}`, { asset: asset });
     assetBuilders[asset] = {};
     for (const [key, periodInSeconds] of Object.entries(timeframes)) {
-        const builder = new CandleBuilder(periodInSeconds, key); // CORREGIDO: Pasar el timeframe string
+        const builder = new CandleBuilder(periodInSeconds, key, () => Math.floor(timeSyncManager.getCorregido() / 1000));
         builder.on('candleClosed', (candleData) => {
             parentPort.postMessage({ 
                 type: 'candleClosed', 
-                data: { ...candleData, asset: asset, timeframe: key } // Añadimos la temporalidad
+                data: { ...candleData, asset: asset, timeframe: key } 
             });
         });
         assetBuilders[asset][key] = builder;
@@ -34,6 +33,31 @@ const ensureAssetBuilders = (asset) => {
   }
 };
 
+const processPip = (pipData) => {
+    const { asset, price, timestamp } = pipData;
+    
+    const brokerTimestampMs = timestamp * 1000;
+    timeSyncManager.update(brokerTimestampMs);
+
+    ensureAssetBuilders(asset);
+
+    for (const builder of Object.values(assetBuilders[asset])) {
+        builder.addPip({ price, timestamp });
+    }
+};
+
+const processBuffer = (asset) => {
+    if (!pipBuffers[asset]) return;
+
+    let nextPip = pipBuffers[asset][expectedSequenceIds[asset]];
+    while (nextPip) {
+        //logger.info(`WORKER-PIP: Procesando pip desde buffer para ${asset}, ID: ${nextPip.sequence_id}`);
+        processPip(nextPip);
+        delete pipBuffers[asset][expectedSequenceIds[asset]];
+        expectedSequenceIds[asset]++;
+        nextPip = pipBuffers[asset][expectedSequenceIds[asset]];
+    }
+};
 
 parentPort.on('message', (msg) => {
   try {
@@ -42,26 +66,41 @@ parentPort.on('message', (msg) => {
     switch (type) {
       case 'start':
         parentPort.postMessage({ type: 'started' });
-        logger.info('WORKER-PIP v2.0: Listo y escuchando.');
+        logger.info('WORKER-PIP v2.2: Listo y escuchando.');
         break;
 
       case 'pip':
-        const { asset, price, timestamp } = data; // CORREGIDO: usar 'asset' según el formato del harvester
-        if (!asset || price === undefined || !timestamp) return;
-        
-        // Log para confirmar la recepción de pips
-        logger.info(`WORKER-PIP: Recibido pip para ${asset} -> ${price}`, { asset: asset });
+        const { asset, price, timestamp, sequence_id } = data;
+        if (!asset || price === undefined || !timestamp || sequence_id === undefined) {
+            logger.warn('WORKER-PIP: Pip inválido recibido (faltan datos).', { data });
+            return;
+        }
 
-        ensureAssetBuilders(asset);
+        if (!expectedSequenceIds[asset]) {
+            expectedSequenceIds[asset] = 1;
+            pipBuffers[asset] = {};
+        }
 
-        // Alimentar el pip a todos los builders para este activo
-        for (const builder of Object.values(assetBuilders[asset])) {
-            builder.addPip({ price, timestamp });
+        if (sequence_id < expectedSequenceIds[asset]) {
+            //logger.warn(`WORKER-PIP: Pip duplicado o antiguo recibido para ${asset}. ID: ${sequence_id}, esperado: ${expectedSequenceIds[asset]}. Se ignora.`);
+            return;
+        }
+
+        if (sequence_id > expectedSequenceIds[asset]) {
+            //logger.warn(`WORKER-PIP: Pip fuera de orden para ${asset}. ID: ${sequence_id}, esperado: ${expectedSequenceIds[asset]}. Almacenando en buffer.`);
+            pipBuffers[asset][sequence_id] = data;
+            return;
+        }
+
+        if (sequence_id === expectedSequenceIds[asset]) {
+            processPip(data);
+            expectedSequenceIds[asset]++;
+            processBuffer(asset);
         }
         break;
 
       case 'prime-current-candle': {
-        const { asset: primeAsset, history } = data; // RENOMBRADO para evitar colisión
+        const { asset: primeAsset, history } = data;
         if (!primeAsset || !history || history.length === 0) return;
         
         logger.warn(`WORKER-PIP: Reconstruyendo velas actuales para ${primeAsset} con ${history.length} ticks.`, { asset: primeAsset });
@@ -72,10 +111,9 @@ parentPort.on('message', (msg) => {
           price: tick[1]
         })).sort((a, b) => a.timestamp - b.timestamp);
 
-        // Procesar cada tick histórico en todos los builders del activo
         for (const tick of formattedTicks) {
             for (const builder of Object.values(assetBuilders[primeAsset])) {
-                builder.addPip(tick, true); // `true` para modo priming
+                builder.addPip(tick, true);
             }
         }
         break;

@@ -43,6 +43,10 @@ class ActiveAssetManager:
         self.active_assets = set()
         self.lock = asyncio.Lock()
         self.primer_activo_procesado = False # Flag para el primer activo
+        # --- INICIO DE LA MODIFICACIÓN ---
+        self.last_pip_timestamps = {} # Diccionario para rastrear { 'activo': timestamp }
+        self.refreshing_now = set()   # Conjunto para evitar refrescos simultáneos del mismo activo
+        # --- FIN DE LA MODIFICACIÓN ---
         logging.info("[ActiveManager] Inicializado en modo de canal lateral.")
 
     def set_page(self, page):
@@ -53,6 +57,9 @@ class ActiveAssetManager:
     def start_background_tasks(self):
         logging.info("[ActiveManager] Iniciando tareas de fondo (bucle de refresco).")
         asyncio.create_task(self._refresh_loop())
+        # --- INICIO DE LA MODIFICACIÓN ---
+        asyncio.create_task(self._pip_watchdog_loop()) # Iniciar el nuevo bucle vigilante
+        # --- FIN DE LA MODIFICACIÓN ---
 
     async def send_message(self, message):
         """Ejecuta JS para enviar un mensaje a través del socket expuesto."""
@@ -75,6 +82,58 @@ class ActiveAssetManager:
                 logging.warning("[ActiveManager] No se pudo enviar mensaje: window.harvesterSocket no existe.")
         except Exception as e:
             logging.error(f"[ActiveManager] Error al ejecutar script en la página: {e}")
+
+    # --- INICIO DE LA MODIFICACIÓN ---
+    # --- AÑADE ESTOS CUATRO NUEVOS MÉTODOS A LA CLASE ActiveAssetManager ---
+
+    def start_pip_monitoring(self, asset_name):
+        """Activa el monitoreo de pips para un activo que está listo."""
+        if asset_name in self.active_assets and asset_name not in self.last_pip_timestamps:
+            logging.info(f"[Watchdog] Iniciando monitoreo de pips para {asset_name}.")
+            # Usamos el tiempo del bucle de eventos de asyncio
+            self.last_pip_timestamps[asset_name] = asyncio.get_running_loop().time()
+
+    def update_last_pip_time(self, asset_name):
+        """Actualiza el timestamp del último pip recibido para un activo."""
+        if asset_name in self.last_pip_timestamps:
+            self.last_pip_timestamps[asset_name] = asyncio.get_running_loop().time()
+
+    async def _force_refresh_asset(self, asset_name):
+        """Función para ejecutar la secuencia de refresco para un activo específico."""
+        if asset_name in self.refreshing_now:
+            logging.warning(f"[Watchdog] El refresco para {asset_name} ya está en curso.")
+            return
+        
+        logging.warning(f"[Watchdog] No se han recibido pips para {asset_name} en 5s. Forzando refresco.")
+        self.refreshing_now.add(asset_name)
+        try:
+            refresh_sequence = self._get_refresh_sequence(asset_name)
+            await self._run_sequence(refresh_sequence, sequence_name=f"refresco forzado ({asset_name})")
+            # Actualizar el timestamp para reiniciar el contador del watchdog
+            self.last_pip_timestamps[asset_name] = asyncio.get_running_loop().time()
+        finally:
+            self.refreshing_now.remove(asset_name)
+
+    async def _pip_watchdog_loop(self):
+        """Bucle que comprueba la inactividad de pips y fuerza un refresco si es necesario."""
+        logging.info("[Watchdog] El vigilante de pips está activo.")
+        while True:
+            await asyncio.sleep(2) # El vigilante comprueba cada 2 segundos
+            
+            # Continuar solo si hay una página y activos que monitorear
+            if not self.page or not self.last_pip_timestamps:
+                continue
+
+            current_time = asyncio.get_running_loop().time()
+            # Crear una copia de las claves para iterar de forma segura
+            assets_to_check = list(self.last_pip_timestamps.keys())
+
+            for asset in assets_to_check:
+                last_pip_time = self.last_pip_timestamps.get(asset)
+                if last_pip_time and (current_time - last_pip_time > 5):
+                    # Crear una nueva tarea para no bloquear el bucle del watchdog
+                    asyncio.create_task(self._force_refresh_asset(asset))
+    # --- FIN DE LA MODIFICACIÓN ---
 
     def _get_warmup_sequence(self, asset_name, is_first_asset=False):
         """
@@ -122,7 +181,7 @@ class ActiveAssetManager:
 
     async def _refresh_loop(self):
         while True:
-            await asyncio.sleep(random.uniform(7 * 60, 15 * 60))
+            await asyncio.sleep(2 * 60)
             if not self.active_assets:
                 continue
             logging.info(f"[ActiveManager] Iniciando ciclo de refresco para {len(self.active_assets)} activo(s).")
@@ -196,6 +255,11 @@ class AssetStateManager:
         if all(state.get(tf, False) for tf in REQUIRED_TIMEFRAMES):
             logging.warning(f"¡PRECARGA COMPLETA! El activo {asset_name} está listo. Se habilita el flujo de pips en tiempo real.")
             state["_notified"] = True
+            # --- INICIO DE LA MODIFICACIÓN ---
+            # Notificar al ActiveAssetManager que puede empezar a monitorear este activo
+            if self.active_asset_manager:
+                self.active_asset_manager.start_pip_monitoring(asset_name)
+            # --- FIN DE LA MODIFICACIÓN ---
 
 class TCPServer:
     def __init__(self, host, port):
@@ -203,15 +267,17 @@ class TCPServer:
         self.writer = None
         self.message_queue = asyncio.Queue()
         self.ready_event = asyncio.Event()
+        self.sequence_counters = {}
     async def _sender_loop(self):
         logging.info("Bucle de envío iniciado. Esperando mensajes...")
+        DELIMITER = b'\n==EOM==\n' # Usaremos un delimitador claro y único
         while True:
             message = await self.message_queue.get()
             sent = False
             while not sent:
                 if self.writer and not self.writer.is_closing():
                     try:
-                        self.writer.write(f"{json.dumps(message)}\n".encode('utf-8'))
+                        self.writer.write(json.dumps(message).encode('utf-8') + DELIMITER)
                         await self.writer.drain()
                         sent = True
                     except (ConnectionResetError, BrokenPipeError):
@@ -230,6 +296,18 @@ class TCPServer:
         logging.info(f"Bot de Node.js conectado desde {client_addr}")
         self.writer = writer
     def send(self, data):
+        # Interceptar y añadir ID secuencial a los pips
+        if data.get("type") == "pip":
+            asset = data.get("payload", {}).get("asset")
+            if asset:
+                # Inicializar el contador si es la primera vez que vemos el activo
+                if asset not in self.sequence_counters:
+                    self.sequence_counters[asset] = 0
+                
+                # Incrementar y añadir el ID de secuencia al payload
+                self.sequence_counters[asset] += 1
+                data["payload"]["sequence_id"] = self.sequence_counters[asset]
+
         try:
             self.message_queue.put_nowait(data)
             return True
@@ -305,6 +383,10 @@ class WebSocketHarvester:
         
         elif msg_type == "realtime_pip":
             if self.asset_manager.is_ready_for_pips(data["asset"]):
+                # --- INICIO DE LA MODIFICACIÓN ---
+                # Antes de enviar, actualizamos el timestamp del último pip visto
+                self.active_asset_manager.update_last_pip_time(data["asset"])
+                # --- FIN DE LA MODIFICACIÓN ---
                 self.tcp_server.send({"type": "pip", "payload": data})
 
     def setup_websocket_listener(self, ws):

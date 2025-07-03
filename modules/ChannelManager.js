@@ -6,14 +6,10 @@ import ChannelWorker from './ChannelWorker.js';
  * asegurando que cada activo sea procesado en un canal aislado e independiente.
  */
 class ChannelManager {
-    constructor() {
-        /**
-         * Almacena las instancias de ChannelWorker. La clave es el nombre del activo
-         * (ej. "EURUSD_otc") y el valor es la instancia del ChannelWorker.
-         * @type {Object.<string, ChannelWorker>}
-         */
+    constructor(getTime) {
         this.channels = {};
-        logger.info('CHANNEL-MANAGER: Gestor de Canales v1.0 listo.');
+        this.getTime = getTime || (() => Date.now());
+        logger.info('CHANNEL-MANAGER: Gestor de Canales v1.1 con Sincronización de Tiempo listo.');
     }
 
     /**
@@ -28,7 +24,7 @@ class ChannelManager {
         if (!this.channels[asset] && createIfNotExist) {
             logger.info(`CHANNEL-MANAGER: No existe canal para ${asset}. Creando uno nuevo...`, { asset: asset });
             // ...se crea una nueva instancia de ChannelWorker y se almacena usando el nombre del activo como clave.
-            this.channels[asset] = new ChannelWorker(asset);
+            this.channels[asset] = new ChannelWorker(asset, this.getTime);
         }
         // Devuelve el canal encontrado o recién creado.
         return this.channels[asset];

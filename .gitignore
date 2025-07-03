@@ -3,6 +3,7 @@
 
 # Carpeta de dependencias de Node.js
 node_modules/
+bot_browser_profile/
 
 # Archivos de log y datos generados por el bot
 *.log
