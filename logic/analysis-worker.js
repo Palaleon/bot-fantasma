@@ -46,6 +46,16 @@ parentPort.on('message', (msg) => {
           parentPort.postMessage({ type: 'signal', data: signal });
         }
         break;
+
+      case 'liveCandle':
+        const liveCandleData = msg.data;
+        const liveSignal = manager.processLiveCandle(liveCandleData);
+        if (liveSignal) {
+            liveSignal.id = `sig_live_${(timeSyncManager.getCorregido()).toString(36)}_${Math.random().toString(36).substr(2, 5)}`;
+            logger.warn(`WORKER-ANALYSIS: 🔥 ¡Señal EN VIVO generada! [ID: ${liveSignal.id}]`);
+            parentPort.postMessage({ type: 'signal', data: liveSignal });
+        }
+        break;
       
       case 'prime-indicators': {
         // --- CORRECCIÓN ---

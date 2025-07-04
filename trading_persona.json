@@ -1,0 +1,2906 @@
+{
+  "persona": {
+    "state": "CALM",
+    "winStreak": 0,
+    "lossStreak": 0,
+    "investmentFactor": 1,
+    "consecutiveLosses": 0,
+    "consecutiveWins": 1
+  },
+  "weeklyActivity": {
+    "Monday": {},
+    "Tuesday": {},
+    "Wednesday": {},
+    "Thursday": {},
+    "Friday": {},
+    "Saturday": {},
+    "Sunday": {}
+  },
+  "tradeHistory": [
+    {
+      "decision": "call",
+      "confidence": 0.6503671453490907,
+      "diagnosis": {
+        "source": "Consenso Total",
+        "quantitative": "Cruce SMA (Efectividad: 64%)",
+        "chartist": "Hammer (Efectividad: 46%)",
+        "context": [
+          "Volatilidad OK",
+          "Sin resistencias cercanas",
+          "Tendencia (ADX: 32.9)",
+          "Alineado con 10m."
+        ]
+      },
+      "asset": "USDARS_otc",
+      "channel": "USDARS_otc",
+      "triggeredBy": "5m",
+      "id": "sig_mcnktq6q_3e3pf",
+      "executionParams": {
+        "investment": 11.01,
+        "delayMs": 1578,
+        "expiration": 5
+      },
+      "timestamp": 1751558701493,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.7008555397070464,
+      "diagnosis": {
+        "source": "Señal Cuantitativa en Vivo",
+        "context": [
+          "Volatilidad OK",
+          "Sin resistencias cercanas",
+          "Live-Tendencia (ADX: 27.9)",
+          "Pullback Alcista Detectado"
+        ]
+      },
+      "asset": "USDPHP_otc",
+      "channel": "USDPHP_otc",
+      "triggeredBy": "live_1m",
+      "id": "sig_live_mcnl5b9d_oim1i",
+      "executionParams": {
+        "investment": 13.03,
+        "delayMs": 4047,
+        "expiration": 5
+      },
+      "timestamp": 1751559243049,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.7041063540425718,
+      "diagnosis": {
+        "source": "Señal Cuantitativa en Vivo",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Live-Tendencia (ADX: 25.3)",
+          "Pullback Bajista Detectado"
+        ]
+      },
+      "asset": "BRLUSD_otc",
+      "channel": "BRLUSD_otc",
+      "triggeredBy": "live_1m",
+      "id": "sig_live_mcnl6ob6_5f0wf",
+      "executionParams": {
+        "investment": 13.16,
+        "delayMs": 3283,
+        "expiration": 5
+      },
+      "timestamp": 1751559305578,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.7032240787442754,
+      "diagnosis": {
+        "source": "Señal Cuantitativa en Vivo",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Live-Tendencia (ADX: 25.7)",
+          "Pullback Bajista Detectado"
+        ]
+      },
+      "asset": "BRLUSD_otc",
+      "channel": "BRLUSD_otc",
+      "triggeredBy": "live_1m",
+      "id": "sig_live_mcnl7z9w_8qcpx",
+      "executionParams": {
+        "investment": 13.13,
+        "delayMs": 2990,
+        "expiration": 5
+      },
+      "timestamp": 1751559366196,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.98,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "chartist": "BullishEngulfing (Efectividad: 100%)",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "BRLUSD_otc",
+      "channel": "BRLUSD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnlebwt_zhb7q",
+      "executionParams": {
+        "investment": 25,
+        "delayMs": 1348,
+        "expiration": 1
+      },
+      "timestamp": 1751559662757,
+      "personaState": "FOCUSED"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.7000026899195264,
+      "diagnosis": {
+        "source": "Señal Cuantitativa en Vivo",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Live-Tendencia (ADX: 23.0)",
+          "Pullback Bajista Detectado"
+        ]
+      },
+      "asset": "NZDCAD_otc",
+      "channel": "NZDCAD_otc",
+      "triggeredBy": "live_1m",
+      "id": "sig_live_mcnlft01_kxumh",
+      "executionParams": {
+        "investment": 14.95,
+        "delayMs": 4896,
+        "expiration": 5
+      },
+      "timestamp": 1751559730705,
+      "personaState": "FOCUSED"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.7002871413434353,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin resistencias cercanas",
+          "Tendencia (ADX: 23.8)",
+          "Conflicto con 5m!"
+        ]
+      },
+      "asset": "AUDNZD_otc",
+      "channel": "AUDNZD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnnkrr5_ouxte",
+      "executionParams": {
+        "investment": 14.96,
+        "delayMs": 1676,
+        "expiration": 1
+      },
+      "timestamp": 1751563322464,
+      "personaState": "FOCUSED"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.7004259636475254,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin resistencias cercanas",
+          "Tendencia (ADX: 25.1)",
+          "Conflicto con 5m!"
+        ]
+      },
+      "asset": "AUDNZD_otc",
+      "channel": "AUDNZD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnnm28e_lrx3c",
+      "executionParams": {
+        "investment": 14.97,
+        "delayMs": 2931,
+        "expiration": 1
+      },
+      "timestamp": 1751563382690,
+      "personaState": "FOCUSED"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.7005970716299716,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin resistencias cercanas",
+          "Tendencia (ADX: 27.1)",
+          "Conflicto con 5m!"
+        ]
+      },
+      "asset": "AUDNZD_otc",
+      "channel": "AUDNZD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnnncm5_bki8i",
+      "executionParams": {
+        "investment": 14.98,
+        "delayMs": 2773,
+        "expiration": 1
+      },
+      "timestamp": 1751563442801,
+      "personaState": "FOCUSED"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.655742318286397,
+      "diagnosis": {
+        "source": "Consenso Total",
+        "context": [
+          "Volatilidad Baja",
+          "Sin resistencias cercanas",
+          "Tendencia (ADX: 38.4)",
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDMXN_otc",
+      "channel": "USDMXN_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcno09og_32e1d",
+      "executionParams": {
+        "investment": 12.91,
+        "delayMs": 1915,
+        "expiration": 1
+      },
+      "timestamp": 1751564048257,
+      "personaState": "FOCUSED"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.7373272768789724,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin resistencias cercanas",
+          "Rango (ADX: 16.9)",
+          "Alineado con 30m."
+        ]
+      },
+      "asset": "USDTRY_otc",
+      "channel": "USDTRY_otc",
+      "triggeredBy": "15m",
+      "id": "sig_mcnpgxcr_78jvq",
+      "executionParams": {
+        "investment": 16.67,
+        "delayMs": 2768,
+        "expiration": 15
+      },
+      "timestamp": 1751566502314,
+      "personaState": "FOCUSED"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.8583273156371438,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin resistencias cercanas",
+          "Tendencia (ADX: 25.3)",
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDPHP_otc",
+      "channel": "USDPHP_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnprgzw_489oz",
+      "executionParams": {
+        "investment": 22.23,
+        "delayMs": 2364,
+        "expiration": 1
+      },
+      "timestamp": 1751566994456,
+      "personaState": "FOCUSED"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.7052261688638816,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Tendencia (ADX: 53.1)",
+          "Alineado con 10m."
+        ]
+      },
+      "asset": "BRLUSD_otc",
+      "channel": "BRLUSD_otc",
+      "triggeredBy": "5m",
+      "id": "sig_mcnptsfj_d9n1p",
+      "executionParams": {
+        "investment": 15.19,
+        "delayMs": 1675,
+        "expiration": 5
+      },
+      "timestamp": 1751567102145,
+      "personaState": "FOCUSED"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.7009761311270076,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin resistencias cercanas",
+          "Tendencia (ADX: 40.2)",
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "NZDCAD_otc",
+      "channel": "NZDCAD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnpwcyw_4mhcv",
+      "executionParams": {
+        "investment": 14.99,
+        "delayMs": 2204,
+        "expiration": 1
+      },
+      "timestamp": 1751567222400,
+      "personaState": "FOCUSED"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.7004697073589111,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin resistencias cercanas",
+          "Tendencia (ADX: 39.2)",
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "NZDCAD_otc",
+      "channel": "NZDCAD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnpxna3_wmu4t",
+      "executionParams": {
+        "investment": 14.97,
+        "delayMs": 2172,
+        "expiration": 1
+      },
+      "timestamp": 1751567282424,
+      "personaState": "FOCUSED"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.98,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Tendencia (ADX: 54.8)",
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "AUDNZD_otc",
+      "channel": "AUDNZD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnq08cj_3taij",
+      "executionParams": {
+        "investment": 24.2,
+        "delayMs": 1196,
+        "expiration": 1
+      },
+      "timestamp": 1751567402742,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.9313617931284928,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin resistencias cercanas",
+          "Rango (ADX: 20.0)",
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "BRLUSD_otc",
+      "channel": "BRLUSD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnqai2n_3mzvs",
+      "executionParams": {
+        "investment": 22.25,
+        "delayMs": 2380,
+        "expiration": 1
+      },
+      "timestamp": 1751567882206,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.7010686412951437,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin resistencias cercanas",
+          "Tendencia (ADX: 30.9)",
+          "Conflicto con 5m!"
+        ]
+      },
+      "asset": "AUDNZD_otc",
+      "channel": "AUDNZD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnqksu9_usjla",
+      "executionParams": {
+        "investment": 13.04,
+        "delayMs": 2705,
+        "expiration": 1
+      },
+      "timestamp": 1751568362717,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.932304698830127,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin resistencias cercanas",
+          "Rango (ADX: 19.4)",
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "BRLUSD_otc",
+      "channel": "BRLUSD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnqndcd_9e712",
+      "executionParams": {
+        "investment": 22.29,
+        "delayMs": 2152,
+        "expiration": 1
+      },
+      "timestamp": 1751568482618,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.9317160984943855,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin resistencias cercanas",
+          "Rango (ADX: 19.5)",
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "BRLUSD_otc",
+      "channel": "BRLUSD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnqonov_8bdxr",
+      "executionParams": {
+        "investment": 22.27,
+        "delayMs": 500,
+        "expiration": 1
+      },
+      "timestamp": 1751568542661,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.98,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin resistencias cercanas",
+          "Tendencia (ADX: 53.9)",
+          "Alineado con 10m."
+        ]
+      },
+      "asset": "BRLUSD_otc",
+      "channel": "BRLUSD_otc",
+      "triggeredBy": "5m",
+      "id": "sig_mcnqwd2e_x7jhl",
+      "executionParams": {
+        "investment": 24.2,
+        "delayMs": 1612,
+        "expiration": 5
+      },
+      "timestamp": 1751568902158,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.7805041727590423,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Rango (ADX: 20.2)",
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "CADCHF_otc",
+      "channel": "CADCHF_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnr085m_agizp",
+      "executionParams": {
+        "investment": 16.22,
+        "delayMs": 2967,
+        "expiration": 1
+      },
+      "timestamp": 1751569082422,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.98,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin resistencias cercanas",
+          "Tendencia (ADX: 52.7)",
+          "Alineado con 10m."
+        ]
+      },
+      "asset": "BRLUSD_otc",
+      "channel": "BRLUSD_otc",
+      "triggeredBy": "5m",
+      "id": "sig_mcnr2sm0_lvcvh",
+      "executionParams": {
+        "investment": 24.2,
+        "delayMs": 3223,
+        "expiration": 5
+      },
+      "timestamp": 1751569202217,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.7110158436281433,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Rango (ADX: 18.9)",
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "CADCHF_otc",
+      "channel": "CADCHF_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnr5day_rau82",
+      "executionParams": {
+        "investment": 10.75,
+        "delayMs": 4019,
+        "expiration": 1
+      },
+      "timestamp": 1751569322374,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.8672784269609067,
+      "diagnosis": {
+        "source": "Consenso Total",
+        "context": [
+          "Volatilidad Baja",
+          "Sin soportes cercanos",
+          "Rango (ADX: 14.6)",
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDNGN_otc",
+      "channel": "USDNGN_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnr98kf_xqp2i",
+      "executionParams": {
+        "investment": 15.75,
+        "delayMs": 2898,
+        "expiration": 1
+      },
+      "timestamp": 1751569502202,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.98,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Rango (ADX: 18.3)",
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "AUDNZD_otc",
+      "channel": "AUDNZD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnraisq_m20a1",
+      "executionParams": {
+        "investment": 19.36,
+        "delayMs": 5184,
+        "expiration": 1
+      },
+      "timestamp": 1751569562207,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.98,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Rango (ADX: 17.0)",
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "AUDNZD_otc",
+      "channel": "AUDNZD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnrbsu7_4pk2c",
+      "executionParams": {
+        "investment": 19.36,
+        "delayMs": 1510,
+        "expiration": 1
+      },
+      "timestamp": 1751569622310,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.98,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Rango (ADX: 17.2)",
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "AUDNZD_otc",
+      "channel": "AUDNZD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnrd34o_5ku86",
+      "executionParams": {
+        "investment": 19.36,
+        "delayMs": 2856,
+        "expiration": 1
+      },
+      "timestamp": 1751569682375,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.98,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Rango (ADX: 17.8)",
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "AUDNZD_otc",
+      "channel": "AUDNZD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnredv9_sd56x",
+      "executionParams": {
+        "investment": 19.36,
+        "delayMs": 3544,
+        "expiration": 1
+      },
+      "timestamp": 1751569742570,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.98,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Rango (ADX: 19.5)",
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "AUDNZD_otc",
+      "channel": "AUDNZD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnrgy3v_793kj",
+      "executionParams": {
+        "investment": 19.36,
+        "delayMs": 3134,
+        "expiration": 1
+      },
+      "timestamp": 1751569862187,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.98,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Rango (ADX: 20.3)",
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "AUDNZD_otc",
+      "channel": "AUDNZD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnri8ap_jh086",
+      "executionParams": {
+        "investment": 19.36,
+        "delayMs": 1660,
+        "expiration": 1
+      },
+      "timestamp": 1751569922354,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.98,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Rango (ADX: 20.5)",
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "AUDNZD_otc",
+      "channel": "AUDNZD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnrjin5_0wcx1",
+      "executionParams": {
+        "investment": 19.36,
+        "delayMs": 1388,
+        "expiration": 1
+      },
+      "timestamp": 1751569982464,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.98,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Rango (ADX: 21.6)",
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "AUDNZD_otc",
+      "channel": "AUDNZD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnrm3dc_nw91r",
+      "executionParams": {
+        "investment": 19.36,
+        "delayMs": 1304,
+        "expiration": 1
+      },
+      "timestamp": 1751570102478,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.98,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Tendencia (ADX: 22.3)",
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "AUDNZD_otc",
+      "channel": "AUDNZD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnroo79_g5zet",
+      "executionParams": {
+        "investment": 19.36,
+        "delayMs": 1096,
+        "expiration": 1
+      },
+      "timestamp": 1751570222787,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.98,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Tendencia (ADX: 24.7)",
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "AUDNZD_otc",
+      "channel": "AUDNZD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnrr8ld_2nk4c",
+      "executionParams": {
+        "investment": 19.36,
+        "delayMs": 1562,
+        "expiration": 1
+      },
+      "timestamp": 1751570342626,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.98,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Tendencia (ADX: 27.7)",
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "AUDNZD_otc",
+      "channel": "AUDNZD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnrtths_nnmhf",
+      "executionParams": {
+        "investment": 19.36,
+        "delayMs": 2152,
+        "expiration": 1
+      },
+      "timestamp": 1751570462597,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.8160000000000001,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "NZDCAD_otc",
+      "channel": "NZDCAD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcns45ik_lczsa",
+      "executionParams": {
+        "investment": 14.11,
+        "delayMs": 1339,
+        "expiration": 1
+      },
+      "timestamp": 1751570945233,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.768,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDCOP_otc",
+      "channel": "USDCOP_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnsd3nw_om1yq",
+      "executionParams": {
+        "investment": 15.72,
+        "delayMs": 1517,
+        "expiration": 1
+      },
+      "timestamp": 1751571362725,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.8160000000000001,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "NZDCAD_otc",
+      "channel": "NZDCAD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnsgyfr_hx1n2",
+      "executionParams": {
+        "investment": 20.29,
+        "delayMs": 971,
+        "expiration": 1
+      },
+      "timestamp": 1751571542604,
+      "personaState": "FOCUSED"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.7,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Conflicto con 5m!"
+        ]
+      },
+      "asset": "USDPKR_otc",
+      "channel": "USDPKR_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnsi8yu_v2mm5",
+      "executionParams": {
+        "investment": 14.95,
+        "delayMs": 3604,
+        "expiration": 1
+      },
+      "timestamp": 1751571602945,
+      "personaState": "FOCUSED"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.7846153846153846,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "NZDCAD_otc",
+      "channel": "NZDCAD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnsktlj_neyad",
+      "executionParams": {
+        "investment": 16.38,
+        "delayMs": 3196,
+        "expiration": 1
+      },
+      "timestamp": 1751571722923,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.6923076923076922,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "BRLUSD_otc",
+      "channel": "BRLUSD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnsndw7_tuq8c",
+      "executionParams": {
+        "investment": 12.69,
+        "delayMs": 3579,
+        "expiration": 1
+      },
+      "timestamp": 1751571842546,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.8160000000000001,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDCOP_otc",
+      "channel": "USDCOP_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnstt9c_3irn1",
+      "executionParams": {
+        "investment": 14.11,
+        "delayMs": 2784,
+        "expiration": 1
+      },
+      "timestamp": 1751572142398,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.98,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDBDT_otc",
+      "channel": "USDBDT_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnsyypu_zhhoc",
+      "executionParams": {
+        "investment": 24.2,
+        "delayMs": 2846,
+        "expiration": 1
+      },
+      "timestamp": 1751572382366,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.98,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDCAD_otc",
+      "channel": "USDCAD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnt1jeb_ta7bb",
+      "executionParams": {
+        "investment": 25,
+        "delayMs": 4047,
+        "expiration": 1
+      },
+      "timestamp": 1751572502597,
+      "personaState": "FOCUSED"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.7285714285714285,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "NZDCAD_otc",
+      "channel": "NZDCAD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnt6o83_8car2",
+      "executionParams": {
+        "investment": 14.14,
+        "delayMs": 1702,
+        "expiration": 1
+      },
+      "timestamp": 1751572742399,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.6861007321173181,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Tendencia (ADX: 30.7)",
+          "Alineado con 10m."
+        ]
+      },
+      "asset": "AUDCAD_otc",
+      "channel": "AUDCAD_otc",
+      "triggeredBy": "5m",
+      "id": "sig_mcnt7z1n_8mao7",
+      "executionParams": {
+        "investment": 12.44,
+        "delayMs": 3203,
+        "expiration": 5
+      },
+      "timestamp": 1751572803023,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.7384615384615385,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "AUDCAD_otc",
+      "channel": "AUDCAD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnujjpc_xtp2n",
+      "executionParams": {
+        "investment": 11.63,
+        "delayMs": 4055,
+        "expiration": 1
+      },
+      "timestamp": 1751575022696,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.8073935656161062,
+      "diagnosis": {
+        "source": "Consenso Total",
+        "context": [
+          "Volatilidad OK",
+          "Sin resistencias cercanas",
+          "Tendencia (ADX: 25.8)",
+          "Alineado con 10m."
+        ]
+      },
+      "asset": "AUDCAD_otc",
+      "channel": "AUDCAD_otc",
+      "triggeredBy": "5m",
+      "id": "sig_mcnuneid_7nnzf",
+      "executionParams": {
+        "investment": 13.84,
+        "delayMs": 3010,
+        "expiration": 5
+      },
+      "timestamp": 1751575202340,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.7528774893097921,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin resistencias cercanas",
+          "Tendencia (ADX: 23.9)",
+          "Alineado con 10m."
+        ]
+      },
+      "asset": "AUDCAD_otc",
+      "channel": "AUDCAD_otc",
+      "triggeredBy": "5m",
+      "id": "sig_mcnuttsi_jghju",
+      "executionParams": {
+        "investment": 12.09,
+        "delayMs": 2268,
+        "expiration": 5
+      },
+      "timestamp": 1751575502326,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.786206896551724,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "AUDCAD_otc",
+      "channel": "AUDCAD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnuyziq_txgj9",
+      "executionParams": {
+        "investment": 13.16,
+        "delayMs": 1293,
+        "expiration": 1
+      },
+      "timestamp": 1751575743034,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.96,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "AUDCAD_otc",
+      "channel": "AUDCAD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnv2upc_f1iv9",
+      "executionParams": {
+        "investment": 18.72,
+        "delayMs": 3607,
+        "expiration": 1
+      },
+      "timestamp": 1751575923267,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.72,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDCOP_otc",
+      "channel": "USDCOP_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnvbuh9_83r4a",
+      "executionParams": {
+        "investment": 11.04,
+        "delayMs": 3010,
+        "expiration": 1
+      },
+      "timestamp": 1751576343037,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.8412679203977073,
+      "diagnosis": {
+        "source": "Consenso Total",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Tendencia (ADX: 31.4)",
+          "Alineado con 10m."
+        ]
+      },
+      "asset": "AUDCHF_otc",
+      "channel": "AUDCHF_otc",
+      "triggeredBy": "5m",
+      "id": "sig_mcnw2uk8_8g1q2",
+      "executionParams": {
+        "investment": 14.92,
+        "delayMs": 1546,
+        "expiration": 5
+      },
+      "timestamp": 1751577602656,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.7502770958411321,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Tendencia (ADX: 22.0)",
+          "Alineado con 10m."
+        ]
+      },
+      "asset": "AUDUSD_otc",
+      "channel": "AUDUSD_otc",
+      "triggeredBy": "5m",
+      "id": "sig_mcnw9a5h_4b5m8",
+      "executionParams": {
+        "investment": 12.01,
+        "delayMs": 2177,
+        "expiration": 5
+      },
+      "timestamp": 1751577902969,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.8094083282692632,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Tendencia (ADX: 26.9)",
+          "Alineado con 30m."
+        ]
+      },
+      "asset": "AUDNZD_otc",
+      "channel": "AUDNZD_otc",
+      "triggeredBy": "15m",
+      "id": "sig_mcnwyzl8_fkxll",
+      "executionParams": {
+        "investment": 17.38,
+        "delayMs": 4659,
+        "expiration": 15
+      },
+      "timestamp": 1751579102333,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.711111111111111,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDDZD_otc",
+      "channel": "USDDZD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnx44vk_adpog",
+      "executionParams": {
+        "investment": 13.44,
+        "delayMs": 2811,
+        "expiration": 1
+      },
+      "timestamp": 1751579342497,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.8274821510455149,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Tendencia (ADX: 29.9)",
+          "Alineado con 10m."
+        ]
+      },
+      "asset": "AUDNZD_otc",
+      "channel": "AUDNZD_otc",
+      "triggeredBy": "5m",
+      "id": "sig_mcnx5fv7_b7k5h",
+      "executionParams": {
+        "investment": 18.1,
+        "delayMs": 3198,
+        "expiration": 5
+      },
+      "timestamp": 1751579402535,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.8267744292101781,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Tendencia (ADX: 29.9)",
+          "Alineado con 10m."
+        ]
+      },
+      "asset": "AUDNZD_otc",
+      "channel": "AUDNZD_otc",
+      "triggeredBy": "5m",
+      "id": "sig_mcnxbuj9_3i8a9",
+      "executionParams": {
+        "investment": 18.07,
+        "delayMs": 4081,
+        "expiration": 5
+      },
+      "timestamp": 1751579702329,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.7223859731482751,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Tendencia (ADX: 30.6)",
+          "Alineado con 10m."
+        ]
+      },
+      "asset": "AUDCHF_otc",
+      "channel": "AUDCHF_otc",
+      "triggeredBy": "5m",
+      "id": "sig_mcnxopn3_d2cvl",
+      "executionParams": {
+        "investment": 11.12,
+        "delayMs": 2398,
+        "expiration": 5
+      },
+      "timestamp": 1751580302516,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.98,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDARS_otc",
+      "channel": "USDARS_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnxv57f_9e8a2",
+      "executionParams": {
+        "investment": 19.36,
+        "delayMs": 2414,
+        "expiration": 1
+      },
+      "timestamp": 1751580602501,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.7384615384615385,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDDZD_otc",
+      "channel": "USDDZD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnxwfmi_7840u",
+      "executionParams": {
+        "investment": 11.63,
+        "delayMs": 1958,
+        "expiration": 1
+      },
+      "timestamp": 1751580662787,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.813869244080444,
+      "diagnosis": {
+        "source": "Consenso Total",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Tendencia (ADX: 25.7)",
+          "Alineado con 10m."
+        ]
+      },
+      "asset": "AUDCHF_otc",
+      "channel": "AUDCHF_otc",
+      "triggeredBy": "5m",
+      "id": "sig_mcny7zzs_zetf7",
+      "executionParams": {
+        "investment": 17.55,
+        "delayMs": 2397,
+        "expiration": 5
+      },
+      "timestamp": 1751581202312,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.667138783054946,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Tendencia (ADX: 24.9)",
+          "Alineado con 10m."
+        ]
+      },
+      "asset": "AUDCHF_otc",
+      "channel": "AUDCHF_otc",
+      "triggeredBy": "5m",
+      "id": "sig_mcnyefoi_2az63",
+      "executionParams": {
+        "investment": 11.69,
+        "delayMs": 1018,
+        "expiration": 5
+      },
+      "timestamp": 1751581502581,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.7999999999999999,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDDZD_otc",
+      "channel": "USDDZD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnyjks2_38i9e",
+      "executionParams": {
+        "investment": 17,
+        "delayMs": 3081,
+        "expiration": 1
+      },
+      "timestamp": 1751581742541,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.8160000000000001,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDDZD_otc",
+      "channel": "USDDZD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnykv6p_vjv7y",
+      "executionParams": {
+        "investment": 17.64,
+        "delayMs": 3882,
+        "expiration": 1
+      },
+      "timestamp": 1751581802590,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.7555555555555555,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDARS_otc",
+      "channel": "USDARS_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnyq065_omw2j",
+      "executionParams": {
+        "investment": 17.51,
+        "delayMs": 3412,
+        "expiration": 1
+      },
+      "timestamp": 1751582042428,
+      "personaState": "FOCUSED"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.6666666666666666,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "AUDNZD_otc",
+      "channel": "AUDNZD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnyv5ac_oasxv",
+      "executionParams": {
+        "investment": 11.67,
+        "delayMs": 2342,
+        "expiration": 1
+      },
+      "timestamp": 1751582282327,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.8060164451464091,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Tendencia (ADX: 23.7)",
+          "Alineado con 30m."
+        ]
+      },
+      "asset": "AUDNZD_otc",
+      "channel": "AUDNZD_otc",
+      "triggeredBy": "15m",
+      "id": "sig_mcnz45k5_o8mf4",
+      "executionParams": {
+        "investment": 17.24,
+        "delayMs": 3417,
+        "expiration": 15
+      },
+      "timestamp": 1751582702609,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.8008156121389544,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Tendencia (ADX: 24.2)",
+          "Alineado con 10m."
+        ]
+      },
+      "asset": "EURGBP_otc",
+      "channel": "EURGBP_otc",
+      "triggeredBy": "5m",
+      "id": "sig_mcnzalct_j8xt8",
+      "executionParams": {
+        "investment": 17.03,
+        "delayMs": 1442,
+        "expiration": 5
+      },
+      "timestamp": 1751583002574,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.7846153846153846,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDDZD_otc",
+      "channel": "USDDZD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnzbvs9_nu1q6",
+      "executionParams": {
+        "investment": 16.38,
+        "delayMs": 2417,
+        "expiration": 1
+      },
+      "timestamp": 1751583063166,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.711111111111111,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDARS_otc",
+      "channel": "USDARS_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnzefqj_s90vy",
+      "executionParams": {
+        "investment": 13.44,
+        "delayMs": 927,
+        "expiration": 1
+      },
+      "timestamp": 1751583182302,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.7285714285714285,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDARS_otc",
+      "channel": "USDARS_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnzfqha_w0rjj",
+      "executionParams": {
+        "investment": 14.14,
+        "delayMs": 4151,
+        "expiration": 1
+      },
+      "timestamp": 1751583242424,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.6857142857142856,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "EURGBP_otc",
+      "channel": "EURGBP_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mcnzjl4p_ymtkq",
+      "executionParams": {
+        "investment": 12.43,
+        "delayMs": 2018,
+        "expiration": 1
+      },
+      "timestamp": 1751583422610,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.9009254139921251,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Tendencia (ADX: 25.4)",
+          "Alineado con 10m."
+        ]
+      },
+      "asset": "EURUSD_otc",
+      "channel": "EURUSD_otc",
+      "triggeredBy": "5m",
+      "id": "sig_mco12vnt_1ycd4",
+      "executionParams": {
+        "investment": 16.83,
+        "delayMs": 3443,
+        "expiration": 5
+      },
+      "timestamp": 1751586002336,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.738483945643974,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin resistencias cercanas",
+          "Rango (ADX: 20.9)",
+          "Alineado con 30m."
+        ]
+      },
+      "asset": "USDDZD_otc",
+      "channel": "USDDZD_otc",
+      "triggeredBy": "15m",
+      "id": "sig_mco19b2q_rkmpt",
+      "executionParams": {
+        "investment": 11.63,
+        "delayMs": 2494,
+        "expiration": 15
+      },
+      "timestamp": 1751586302244,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.8647248587713449,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Rango (ADX: 16.6)",
+          "Alineado con 30m."
+        ]
+      },
+      "asset": "CADJPY_otc",
+      "channel": "CADJPY_otc",
+      "triggeredBy": "15m",
+      "id": "sig_mco2bwj3_wi1su",
+      "executionParams": {
+        "investment": 15.67,
+        "delayMs": 3564,
+        "expiration": 15
+      },
+      "timestamp": 1751588102642,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.78,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "AUDJPY_otc",
+      "channel": "AUDJPY_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mco2d6ma_b4fwz",
+      "executionParams": {
+        "investment": 12.96,
+        "delayMs": 5042,
+        "expiration": 1
+      },
+      "timestamp": 1751588162765,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.7999999999999999,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "AUDJPY_otc",
+      "channel": "AUDJPY_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mco2eh3a_woow9",
+      "executionParams": {
+        "investment": 13.6,
+        "delayMs": 2457,
+        "expiration": 1
+      },
+      "timestamp": 1751588222966,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.66,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDPKR_otc",
+      "channel": "USDPKR_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mco2h147_x7vp4",
+      "executionParams": {
+        "investment": 11.4,
+        "delayMs": 2466,
+        "expiration": 1
+      },
+      "timestamp": 1751588342221,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.98,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Tendencia (ADX: 27.9)",
+          "Alineado con 10m."
+        ]
+      },
+      "asset": "EURCAD_otc",
+      "channel": "EURCAD_otc",
+      "triggeredBy": "5m",
+      "id": "sig_mco2ibn7_j50ps",
+      "executionParams": {
+        "investment": 24.2,
+        "delayMs": 1918,
+        "expiration": 5
+      },
+      "timestamp": 1751588402514,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.782608695652174,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "AUDJPY_otc",
+      "channel": "AUDJPY_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mco2twf0_297gn",
+      "executionParams": {
+        "investment": 13.04,
+        "delayMs": 1303,
+        "expiration": 1
+      },
+      "timestamp": 1751588942665,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.7090909090909091,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDPKR_otc",
+      "channel": "USDPKR_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mco2wh3g_bgxdg",
+      "executionParams": {
+        "investment": 13.36,
+        "delayMs": 3673,
+        "expiration": 1
+      },
+      "timestamp": 1751589062787,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.8104073083894404,
+      "diagnosis": {
+        "source": "Consenso Total",
+        "context": [
+          "Volatilidad OK",
+          "Sin resistencias cercanas",
+          "Rango (ADX: 13.5)",
+          "Alineado con 10m."
+        ]
+      },
+      "asset": "AUDCHF_otc",
+      "channel": "AUDCHF_otc",
+      "triggeredBy": "5m",
+      "id": "sig_mco31m04_jgw9h",
+      "executionParams": {
+        "investment": 20.03,
+        "delayMs": 1350,
+        "expiration": 5
+      },
+      "timestamp": 1751589302393,
+      "personaState": "FOCUSED"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.6782608695652174,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDPKR_otc",
+      "channel": "USDPKR_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mco3am9t_9ft7y",
+      "executionParams": {
+        "investment": 12.13,
+        "delayMs": 2949,
+        "expiration": 1
+      },
+      "timestamp": 1751589722647,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.8999999999999999,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 10m."
+        ]
+      },
+      "asset": "USDPKR_otc",
+      "channel": "USDPKR_otc",
+      "triggeredBy": "5m",
+      "id": "sig_mco3egu6_qkra8",
+      "executionParams": {
+        "investment": 21,
+        "delayMs": 2259,
+        "expiration": 5
+      },
+      "timestamp": 1751589902261,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.7962125673796691,
+      "diagnosis": {
+        "source": "Consenso Total",
+        "context": [
+          "Volatilidad OK",
+          "Sin resistencias cercanas",
+          "Rango (ADX: 13.0)",
+          "Alineado con 10m."
+        ]
+      },
+      "asset": "AUDCHF_otc",
+      "channel": "AUDCHF_otc",
+      "triggeredBy": "5m",
+      "id": "sig_mco3l7a9_v5qcc",
+      "executionParams": {
+        "investment": 19.38,
+        "delayMs": 2312,
+        "expiration": 5
+      },
+      "timestamp": 1751590216497,
+      "personaState": "FOCUSED"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.680205697046343,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin resistencias cercanas",
+          "Rango (ADX: 12.5)",
+          "Alineado con 10m."
+        ]
+      },
+      "asset": "AUDCHF_otc",
+      "channel": "AUDCHF_otc",
+      "triggeredBy": "5m",
+      "id": "sig_mco3rbu3_hu0rp",
+      "executionParams": {
+        "investment": 14.04,
+        "delayMs": 851,
+        "expiration": 5
+      },
+      "timestamp": 1751590502274,
+      "personaState": "FOCUSED"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.98,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDIDR_otc",
+      "channel": "USDIDR_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mco3v6vs_vydsu",
+      "executionParams": {
+        "investment": 25,
+        "delayMs": 1101,
+        "expiration": 1
+      },
+      "timestamp": 1751590682515,
+      "personaState": "FOCUSED"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.8631611956959431,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Rango (ADX: 17.5)",
+          "Alineado con 30m."
+        ]
+      },
+      "asset": "CADJPY_otc",
+      "channel": "CADJPY_otc",
+      "triggeredBy": "15m",
+      "id": "sig_mco3xrnq_8gqho",
+      "executionParams": {
+        "investment": 19.53,
+        "delayMs": 3631,
+        "expiration": 15
+      },
+      "timestamp": 1751590802630,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.768,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDPKR_otc",
+      "channel": "USDPKR_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mco40c3v_fx35p",
+      "executionParams": {
+        "investment": 12.58,
+        "delayMs": 1440,
+        "expiration": 1
+      },
+      "timestamp": 1751590922537,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.8999999999999999,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDPKR_otc",
+      "channel": "USDPKR_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mco42wso_fnnq7",
+      "executionParams": {
+        "investment": 16.8,
+        "delayMs": 1665,
+        "expiration": 1
+      },
+      "timestamp": 1751591042475,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.7034482758620689,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 10m."
+        ]
+      },
+      "asset": "EURAUD_otc",
+      "channel": "EURAUD_otc",
+      "triggeredBy": "5m",
+      "id": "sig_mco4479q_t3z3w",
+      "executionParams": {
+        "investment": 10.51,
+        "delayMs": 2704,
+        "expiration": 5
+      },
+      "timestamp": 1751591102881,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.7090909090909091,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDJPY_otc",
+      "channel": "USDJPY_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mco49chb_qklwb",
+      "executionParams": {
+        "investment": 10.69,
+        "delayMs": 2034,
+        "expiration": 1
+      },
+      "timestamp": 1751591342948,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.72,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDPKR_otc",
+      "channel": "USDPKR_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mco4frhp_96p0w",
+      "executionParams": {
+        "investment": 11.04,
+        "delayMs": 1532,
+        "expiration": 1
+      },
+      "timestamp": 1751591642317,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.8313238189349507,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Tendencia (ADX: 38.6)",
+          "Alineado con 30m."
+        ]
+      },
+      "asset": "EURCAD_otc",
+      "channel": "EURCAD_otc",
+      "triggeredBy": "15m",
+      "id": "sig_mco4h249_cd8b0",
+      "executionParams": {
+        "investment": 14.6,
+        "delayMs": 4019,
+        "expiration": 15
+      },
+      "timestamp": 1751591702346,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.7090909090909091,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDJPY_otc",
+      "channel": "USDJPY_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mco4jmie_2e6dk",
+      "executionParams": {
+        "investment": 10.69,
+        "delayMs": 2839,
+        "expiration": 1
+      },
+      "timestamp": 1751591822501,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.7204163617902473,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad Baja",
+          "Sin resistencias cercanas",
+          "Tendencia (ADX: 32.3)",
+          "Alineado con 10m."
+        ]
+      },
+      "asset": "USDPKR_otc",
+      "channel": "USDPKR_otc",
+      "triggeredBy": "5m",
+      "id": "sig_mco4nhbl_i7lfx",
+      "executionParams": {
+        "investment": 11.05,
+        "delayMs": 3086,
+        "expiration": 5
+      },
+      "timestamp": 1751592002373,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.96,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDPKR_otc",
+      "channel": "USDPKR_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mco4rc20_8s9n5",
+      "executionParams": {
+        "investment": 18.72,
+        "delayMs": 1097,
+        "expiration": 1
+      },
+      "timestamp": 1751592182171,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.7206765742588866,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin resistencias cercanas",
+          "Tendencia (ADX: 47.7)",
+          "Alineado con 10m."
+        ]
+      },
+      "asset": "EURAUD_otc",
+      "channel": "EURAUD_otc",
+      "triggeredBy": "5m",
+      "id": "sig_mco4twvh_lhu2d",
+      "executionParams": {
+        "investment": 11.06,
+        "delayMs": 2495,
+        "expiration": 5
+      },
+      "timestamp": 1751592302472,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.72,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "AUDCHF_otc",
+      "channel": "AUDCHF_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mco4xrjl_plgsx",
+      "executionParams": {
+        "investment": 11.04,
+        "delayMs": 3397,
+        "expiration": 1
+      },
+      "timestamp": 1751592482213,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.8307692307692307,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "AUDJPY_otc",
+      "channel": "AUDJPY_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mco4z1xw_isl93",
+      "executionParams": {
+        "investment": 14.58,
+        "delayMs": 2468,
+        "expiration": 1
+      },
+      "timestamp": 1751592542221,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.9301935335847402,
+      "diagnosis": {
+        "source": "Consenso Total",
+        "context": [
+          "Volatilidad Baja",
+          "Sin resistencias cercanas",
+          "Tendencia (ADX: 29.8)",
+          "Alineado con 10m."
+        ]
+      },
+      "asset": "USDPKR_otc",
+      "channel": "USDPKR_otc",
+      "triggeredBy": "5m",
+      "id": "sig_mco50c7k_clu3g",
+      "executionParams": {
+        "investment": 17.77,
+        "delayMs": 2438,
+        "expiration": 5
+      },
+      "timestamp": 1751592602285,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.7501811772363802,
+      "diagnosis": {
+        "source": "Consenso Total",
+        "context": [
+          "Volatilidad Baja",
+          "Sin resistencias cercanas",
+          "Tendencia (ADX: 28.7)",
+          "Alineado con 10m."
+        ]
+      },
+      "asset": "USDPKR_otc",
+      "channel": "USDPKR_otc",
+      "triggeredBy": "5m",
+      "id": "sig_mco56rvo_oq6cm",
+      "executionParams": {
+        "investment": 12.01,
+        "delayMs": 2573,
+        "expiration": 5
+      },
+      "timestamp": 1751592902390,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.8444444444444444,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "AUDJPY_otc",
+      "channel": "AUDJPY_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mco58296_k1rfl",
+      "executionParams": {
+        "investment": 15.02,
+        "delayMs": 1809,
+        "expiration": 1
+      },
+      "timestamp": 1751592962515,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.98,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDPKR_otc",
+      "channel": "USDPKR_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mco5amt1_872oi",
+      "executionParams": {
+        "investment": 19.36,
+        "delayMs": 2400,
+        "expiration": 1
+      },
+      "timestamp": 1751593082569,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.8571428571428571,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "AUDJPY_otc",
+      "channel": "AUDJPY_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mco5d77f_z9a5r",
+      "executionParams": {
+        "investment": 15.43,
+        "delayMs": 1676,
+        "expiration": 1
+      },
+      "timestamp": 1751593202260,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.72,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "AUDCHF_otc",
+      "channel": "AUDCHF_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mco5fs7n_qe8aw",
+      "executionParams": {
+        "investment": 11.04,
+        "delayMs": 933,
+        "expiration": 1
+      },
+      "timestamp": 1751593322858,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.8403887552356384,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Rango (ADX: 16.7)",
+          "Alineado con 30m."
+        ]
+      },
+      "asset": "CADJPY_otc",
+      "channel": "CADJPY_otc",
+      "triggeredBy": "15m",
+      "id": "sig_mco5jmoc_scl6m",
+      "executionParams": {
+        "investment": 14.89,
+        "delayMs": 2066,
+        "expiration": 15
+      },
+      "timestamp": 1751593502235,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.8321401991732472,
+      "diagnosis": {
+        "source": "Consenso Total",
+        "context": [
+          "Volatilidad OK",
+          "Sin resistencias cercanas",
+          "Tendencia (ADX: 44.1)",
+          "Alineado con 10m."
+        ]
+      },
+      "asset": "EURAUD_otc",
+      "channel": "EURAUD_otc",
+      "triggeredBy": "5m",
+      "id": "sig_mco5q245_q06bb",
+      "executionParams": {
+        "investment": 14.63,
+        "delayMs": 4053,
+        "expiration": 5
+      },
+      "timestamp": 1751593802208,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.7999999999999999,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDIDR_otc",
+      "channel": "USDIDR_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mco5rcio_cxw7y",
+      "executionParams": {
+        "investment": 13.6,
+        "delayMs": 1553,
+        "expiration": 1
+      },
+      "timestamp": 1751593862391,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.72,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "EURAUD_otc",
+      "channel": "EURAUD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mco5smud_4gz66",
+      "executionParams": {
+        "investment": 11.04,
+        "delayMs": 2280,
+        "expiration": 1
+      },
+      "timestamp": 1751593922453,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.98,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "AUDJPY_otc",
+      "channel": "AUDJPY_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mco5v7kb_zx5id",
+      "executionParams": {
+        "investment": 19.36,
+        "delayMs": 2372,
+        "expiration": 1
+      },
+      "timestamp": 1751594042588,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.8271347065351096,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin resistencias cercanas",
+          "Rango (ADX: 18.4)",
+          "Alineado con 30m."
+        ]
+      },
+      "asset": "AUDJPY_otc",
+      "channel": "AUDJPY_otc",
+      "triggeredBy": "15m",
+      "id": "sig_mco62xdx_hf47o",
+      "executionParams": {
+        "investment": 14.47,
+        "delayMs": 4659,
+        "expiration": 15
+      },
+      "timestamp": 1751594402657,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.75,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDPKR_otc",
+      "channel": "USDPKR_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mco65i3o_p5e87",
+      "executionParams": {
+        "investment": 12,
+        "delayMs": 3271,
+        "expiration": 1
+      },
+      "timestamp": 1751594522814,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.7206975550046867,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin resistencias cercanas",
+          "Tendencia (ADX: 41.6)",
+          "Alineado con 10m."
+        ]
+      },
+      "asset": "EURAUD_otc",
+      "channel": "EURAUD_otc",
+      "triggeredBy": "5m",
+      "id": "sig_mco69cns_qi5yg",
+      "executionParams": {
+        "investment": 11.06,
+        "delayMs": 1274,
+        "expiration": 5
+      },
+      "timestamp": 1751594702384,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.96,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "AUDCHF_otc",
+      "channel": "AUDCHF_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mco6ehxn_41o9j",
+      "executionParams": {
+        "investment": 18.72,
+        "delayMs": 500,
+        "expiration": 1
+      },
+      "timestamp": 1751594942497,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.8203040396520619,
+      "diagnosis": {
+        "source": "Consenso Total",
+        "context": [
+          "Volatilidad OK",
+          "Sin resistencias cercanas",
+          "Tendencia (ADX: 41.2)",
+          "Alineado con 10m."
+        ]
+      },
+      "asset": "EURAUD_otc",
+      "channel": "EURAUD_otc",
+      "triggeredBy": "5m",
+      "id": "sig_mco6fsbz_3zdcp",
+      "executionParams": {
+        "investment": 14.25,
+        "delayMs": 2960,
+        "expiration": 5
+      },
+      "timestamp": 1751595002634,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.98,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin soportes cercanos",
+          "Rango (ADX: 17.3)",
+          "Alineado con 10m."
+        ]
+      },
+      "asset": "EURCAD_otc",
+      "channel": "EURCAD_otc",
+      "triggeredBy": "5m",
+      "id": "sig_mco6m81f_ylpa9",
+      "executionParams": {
+        "investment": 19.36,
+        "delayMs": 784,
+        "expiration": 5
+      },
+      "timestamp": 1751595302794,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.7000000000000001,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDPKR_otc",
+      "channel": "USDPKR_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mco6rcse_1dri4",
+      "executionParams": {
+        "investment": 13,
+        "delayMs": 2597,
+        "expiration": 1
+      },
+      "timestamp": 1751595542356,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.98,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDJPY_otc",
+      "channel": "USDJPY_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mco6snmx_99vwr",
+      "executionParams": {
+        "investment": 24.2,
+        "delayMs": 3904,
+        "expiration": 1
+      },
+      "timestamp": 1751595602501,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.72,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "USDPKR_otc",
+      "channel": "USDPKR_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mco6wi0w_272z0",
+      "executionParams": {
+        "investment": 11.04,
+        "delayMs": 4006,
+        "expiration": 1
+      },
+      "timestamp": 1751595782433,
+      "personaState": "CAUTIOUS"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.720259208907995,
+      "diagnosis": {
+        "source": "Señal Cuantitativa",
+        "context": [
+          "Volatilidad OK",
+          "Sin resistencias cercanas",
+          "Tendencia (ADX: 37.1)",
+          "Alineado con 10m."
+        ]
+      },
+      "asset": "EURAUD_otc",
+      "channel": "EURAUD_otc",
+      "triggeredBy": "5m",
+      "id": "sig_mco6z3dn_fdump",
+      "executionParams": {
+        "investment": 13.81,
+        "delayMs": 3789,
+        "expiration": 5
+      },
+      "timestamp": 1751595903424,
+      "personaState": "CALM"
+    },
+    {
+      "decision": "call",
+      "confidence": 0.6857142857142856,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "EURAUD_otc",
+      "channel": "EURAUD_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mco71n4c_ydd60",
+      "executionParams": {
+        "investment": 12.43,
+        "delayMs": 3455,
+        "expiration": 1
+      },
+      "timestamp": 1751596022327,
+      "personaState": "CALM"
+    }
+  ],
+  "assetBehavior": {
+    "NZDCAD_otc": {
+      "losses": 3,
+      "probationEnd": 1751573705809
+    },
+    "AUDNZD_otc": {
+      "losses": 1,
+      "probationEnd": 1751580909050
+    },
+    "BRLUSD_otc": {
+      "losses": 3,
+      "probationEnd": 1751572807007
+    },
+    "CADCHF_otc": {
+      "losses": 1,
+      "probationEnd": 0
+    },
+    "USDCAD_otc": {
+      "losses": 1,
+      "probationEnd": 0
+    },
+    "AUDCAD_otc": {
+      "losses": 2,
+      "probationEnd": 1751576888411
+    },
+    "USDCOP_otc": {
+      "losses": 1,
+      "probationEnd": 0
+    },
+    "AUDUSD_otc": {
+      "losses": 1,
+      "probationEnd": 0
+    },
+    "AUDCHF_otc": {
+      "losses": 1,
+      "probationEnd": 1751582406379
+    },
+    "USDARS_otc": {
+      "losses": 0,
+      "probationEnd": 1751583006800
+    },
+    "USDDZD_otc": {
+      "losses": 1,
+      "probationEnd": 0
+    },
+    "EURGBP_otc": {
+      "losses": 2,
+      "probationEnd": 1751584385653
+    },
+    "AUDJPY_otc": {
+      "losses": 2,
+      "probationEnd": 1751589904808
+    },
+    "USDPKR_otc": {
+      "losses": 0,
+      "probationEnd": 0
+    },
+    "EURCAD_otc": {
+      "losses": 1,
+      "probationEnd": 0
+    },
+    "USDIDR_otc": {
+      "losses": 1,
+      "probationEnd": 0
+    },
+    "CADJPY_otc": {
+      "losses": 1,
+      "probationEnd": 0
+    },
+    "USDJPY_otc": {
+      "losses": 2,
+      "probationEnd": 1751596567591
+    }
+  },
+  "lastSignalPattern": "USDPKR_otc-1m-call"
+}

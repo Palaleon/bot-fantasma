@@ -28,6 +28,12 @@ const ensureAssetBuilders = (asset) => {
                 data: { ...candleData, asset: asset, timeframe: key } 
             });
         });
+        builder.on('candleUpdated', (candleData) => {
+            parentPort.postMessage({
+                type: 'liveCandleUpdate',
+                data: { ...candleData, asset: asset, timeframe: key }
+            });
+        });
         assetBuilders[asset][key] = builder;
     }
   }

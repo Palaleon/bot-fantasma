@@ -5,31 +5,25 @@ Antes que nada para que comprendas la arquitectura del bot analiza como-funciona
 luego busca la solucion sin romper la arquitectura del siguiente problema:
 
 
-1. Problema Identificado
-
-SE HA DETECTADO QUE ACTUALMENTE SE ESTÁ RECIBIENDO LOS MENSAJES QUE SON NECESARIOS PARA EVALUAR EL RESULTADO DE TRADE DE MANERA CORRECTA.
-SOLO EXISTE UN SOLO DETALLE, Y ES QUE SI EXISTE UNA OPERACIÓN EJEMPLO QUE DURE UN CIERTO TIEMPO Y DENTRO DE ESE TRANSCURSO SE CREA UNA OPERACIÓN DE TIEMPO MENOR (LO CUAL ES NORMAL Y DEBERÍA OCURRIR)
-CUANDO LA DE MENOR TIEMPO FINALIZA QUE LLEGA SU RESULTADO, NO SOLO SE LEE EL RESULTADO DE LA OPERACIÓN DE CORTO TIEMPO SI NO QUE EXISTE UN BUG QUE HACE QUE SE EVALUE TAMBIÉN LA OPERACION PRIMERA MENCIONADA EN EL EJEMPLO, LA CUAL AÚN NO TERMINA.
-
-ES DECIR:
-
-OPERACION A ABIERTA  A QUE TERMINE A LAS 20:00
-
-OPERACION B ABIERTA A QUE TERMINE A LAS 19:55
-
-
-LLEGAN LAS 19:55
-
-LLEGA EL MENSAJE DE RESULTADO.
-
-SE EVALUA LA OPERACION B.
-
-Y POR ALGUNA RAZON, SIN HABER TERMINADO, ESE MISMO MENSAJE DE RESULTADO, HACE QUE EXISTA UN BUG QUE EVALUE LA OPERACION A. SIN ESTA SI QUIERA HABER TERMINADO NI MANDADO SU MENSAJE DE RESULTADO.
-
-RECUERDA LA IDEA ES TENER PRECISION POR CADA OPERACIÓN, PARA ESO EL ID. 
-
-ADEMÁS TAMBIÉN RECUERDA QUE ESTO DEBE SER NO BLOQUEANTE PARA EL BOT, NI SIQUIERA QUE LO RETRASE.
+1- El bot tiene muy mal winrate en operaciones de 1m, es como si no usara lo necesario para ser preciso en esta temporalidad y es muy ingenuo, en el resto de temporalidades tiene un buen winrate.
+2- el bot no tiene conciencia de cuanto saldo tiene.
 
 REQUISITOS:
 JAMAS SUPONGAS, BASATE EN CODE REAL Y ACTUAL.
 MANTENTE SIEMPRE CON LA MENTE ABIERTA A DETALLES PARA NO PASARLOS POR ALTO.
+
+# Pendiente: Mejora de Precisión con RSI de 5s en 1M y 5M
+
+## Contexto de la Pregunta del Jefe:
+El jefe observó que, a pesar de que el bot genera velas de 5 segundos, estas no estaban siendo utilizadas para refinar la precisión de las operaciones en temporalidades de 1 minuto y 5 minutos. Se identificó que el `IndicatorEngine` ya calcula un RSI para estas velas de 5s, pero la lógica de decisión en `ChannelWorker` no lo estaba empleando como filtro.
+
+## Problema Identificado:
+El bot no estaba explotando al máximo la información de alta frecuencia disponible (velas de 5s) para validar o rechazar señales generadas en temporalidades ligeramente superiores (1m y 5m). Esto podría llevar a entradas subóptimas o "ruidosas" en mercados volátiles.
+
+## Solución Propuesta:
+Implementar el RSI de 5s como un filtro de confirmación final dentro de la función `_getQuantitativeSignal` en `modules/ChannelWorker.js` para las temporalidades de 1m y 5m.
+
+*   **Para señales de COMPRA (`call`):** La señal solo se confirmará si el RSI de 5s está por debajo de un umbral (ej. 60), evitando comprar en picos de sobrecompra momentáneos.
+*   **Para señales de VENTA (`put`):** La señal solo se confirmará si el RSI de 5s está por encima de un umbral (ej. 40), evitando vender en valles de sobreventa momentáneos.
+
+Esto permitirá que el bot tome decisiones más precisas al considerar el momentum inmediato del precio, reduciendo el "ruido" y mejorando la calidad de las entradas.

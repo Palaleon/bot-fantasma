@@ -46,6 +46,10 @@ class CandleBuilder extends EventEmitter {
         this.currentCandle.low = Math.min(this.currentCandle.low, price);
         this.currentCandle.close = price;
         this.currentCandle.volume += 1;
+
+        // Emitir la vela actualizada en tiempo real
+        const liveCandle = { ...this.currentCandle, timeframe: this.timeframe };
+        this.emit('candleUpdated', liveCandle);
     }
 
     closeCurrentCandle() {

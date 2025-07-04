@@ -135,13 +135,31 @@ class Humanizer extends EventEmitter {
     if (this.state.persona.state === 'FOCUSED') investmentMultiplier = 1.15;
     if (this.state.persona.state === 'CAUTIOUS') investmentMultiplier = 0.80;
 
-    const expiration = parseInt(signal.triggeredBy, 10) || 5;
+    let expiration = 5; // Valor por defecto
+    if (signal.triggeredBy.startsWith('live_')) {
+        // Para señales en vivo, extraemos el número después de 'live_'
+        const timePart = signal.triggeredBy.split('_')[1]; // '1m'
+        expiration = parseInt(timePart, 10); // 1
+    } else {
+        // Para señales normales, usamos la lógica anterior
+        expiration = parseInt(signal.triggeredBy, 10);
+    }
+    // Si algo falla, nos aseguramos de tener un valor sensato
+    if (isNaN(expiration) || expiration <= 0) {
+        expiration = 1; // Para señales en vivo, un defecto de 1 min es más seguro
+    }
     const { minInvestment, maxInvestment } = config.trading;
     const investmentRatio = (signal.confidence - 0.5) / 0.5;
     const dynamicBaseInvestment = minInvestment + (investmentRatio * (maxInvestment - minInvestment));
     const finalInvestment = Math.max(minInvestment, Math.min(maxInvestment, parseFloat((dynamicBaseInvestment * investmentMultiplier).toFixed(2))));
-    const { meanMs, stdDevMs } = config.humanizer.delay;
-    const delayMs = Math.max(500, gaussianRandom(meanMs, stdDevMs));
+    
+    let delayMs = 0; // Por defecto, no hay retardo para las operaciones optimizadas.
+
+    // Solo aplicamos el retardo "humano" a las señales de velas cerradas, no a las de tiempo real.
+    if (!signal.triggeredBy.startsWith('live_')) {
+        const { meanMs, stdDevMs } = config.humanizer.delay;
+        delayMs = Math.max(500, gaussianRandom(meanMs, stdDevMs));
+    }
 
     return { investment: finalInvestment, delayMs: Math.round(delayMs), expiration };
   }

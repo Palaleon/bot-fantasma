@@ -96,12 +96,35 @@ class QXWebSocketTrader extends EventEmitter {
                 });
             }
 
-            // CASO 2: Es el mensaje de RESULTADO FINAL (una lista de operaciones).
-            // Lo identificamos porque es un array y los elementos tienen 'profit'. 
-            else if (Array.isArray(parsedData) && parsedData.length > 0 && parsedData[0].hasOwnProperty('profit')) {
-                logger.info(`[Oído CDP] 📊 ¡Resultados finales detectados! ${parsedData.length} trade(s) en la lista.`);
-                // Emitimos el evento de siempre, que ahora también escuchará el TradeResultManager.
-                this.emit('tradeResult', { deals: parsedData });
+            // CASO 2 y 3: Procesamiento Unificado de Mensajes de Deals (Resultados y Actualizaciones)
+            let dealsList = [];
+            let messageType = 'Desconocido';
+
+            // Identificamos si es un mensaje de resultado final (objeto con lista 'deals')
+            if (parsedData && typeof parsedData === 'object' && !Array.isArray(parsedData) && parsedData.deals && Array.isArray(parsedData.deals)) {
+                dealsList = parsedData.deals;
+                messageType = 'Resultado Final';
+            }
+            // O si es un mensaje de actualización de estado (array)
+            else if (Array.isArray(parsedData)) {
+                dealsList = parsedData;
+                messageType = 'Actualización de Estado';
+            }
+
+            if (dealsList.length > 0) {
+                // logger.info(`[Oído CDP] 📬 Mensaje de '${messageType}' detectado. Contiene ${dealsList.length} deal(s). Procesando...`);
+                for (const deal of dealsList) {
+                    // LA REGLA DE ORO: Una operación CERRADA tiene un ID, un closePrice != 0 y una propiedad de profit.
+                    if (deal && deal.id && deal.closePrice !== 0 && deal.hasOwnProperty('profit')) {
+                        logger.info(`[Oído CDP] -> ✅ Detectada operación CERRADA. Emitiendo resultado para ID: ${deal.id}`);
+                        this.emit('individualTradeResult', deal);
+                    }
+                    // Si tiene ID pero no cumple la regla de oro, es una actualización de una operación abierta.
+                    else if (deal && deal.id) {
+                        logger.info(`[Oído CDP] -> 🚫 Detectada actualización de operación ABIERTA. Ignorando ID: ${deal.id}`);
+                        // No se hace nada. Es el comportamiento inteligente que queremos.
+                    }
+                }
             }
             
         } catch (e) {

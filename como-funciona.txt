@@ -1,40 +1,39 @@
-# Análisis Funcional y Arquitectónico del Bot Fantasma v14.1 (El Sincronizador Preciso)
+# Análisis Funcional y Arquitectónico del Bot Fantasma v15.0 (El Intérprete del Flujo)
 
 ## Introducción
 
-El Bot Fantasma v14.1 hereda la robusta arquitectura de su predecesor e introduce una mejora crítica para la precisión de las operaciones: un **Sincronizador de Tiempo Dinámico**.
+El Bot Fantasma v15.0 representa un salto evolutivo en la capacidad de análisis del bot. Manteniendo la robusta arquitectura de su predecesor, esta versión introduce una **capacidad de análisis en tiempo real (intra-vela)**, permitiendo al bot "sentir" y reaccionar al flujo de precios a medida que se forma cada vela, en lugar de esperar a su cierre.
 
-## 1. Flujo de Arranque y Autenticación
+## 1. Arquitectura de Doble Flujo: Estratégico y Táctico
 
-El sistema de **login manual asistido** se mantiene sin cambios, garantizando la independencia y seguridad del bot al utilizar un perfil de navegador dedicado.
+La principal innovación de la v15.0 es la implementación de un sistema de análisis de doble flujo que opera en paralelo:
 
-## 2. Arquitectura de Componentes y Flujo de Decisiones
+**a) Flujo Estratégico (Basado en Velas Cerradas):**
+*   **Sin cambios:** Este es el flujo de trabajo original y probado. El `pip-worker` construye las velas y, una vez que una vela se cierra oficialmente, la envía al `analysis-worker`.
+*   **Análisis de Confirmación:** El `IndicatorEngine` utiliza estas velas cerradas para actualizar su estado histórico, recalibrar la efectividad de las estrategias y generar señales de alta fiabilidad basadas en datos confirmados.
+*   **Propósito:** Este flujo garantiza la estabilidad, la visión a largo plazo y la integridad de los datos históricos.
 
-El flujo de datos (`Harvester` -> `TCPConnector` -> `pip-worker`) y la lógica de análisis (`ChannelWorker`, `IndicatorEngine`) siguen siendo los pilares del sistema. Sin embargo, toda la cadena de eventos ahora opera sobre una línea de tiempo unificada y de alta precisión.
+**b) NUEVO: Flujo Táctico (Basado en Velas Vivas):**
+*   **El Problema:** Anteriormente, el bot era "ciego" entre el cierre de una vela y la siguiente, perdiendo oportunidades valiosas que ocurrían durante la formación de la vela.
+*   **La Solución:**
+    1.  **Emisión en Tiempo Real:** El `CandleBuilder` ahora emite un evento `candleUpdated` con cada pip que recibe. Este evento contiene una "vela viva", una instantánea de la vela actual en formación.
+    2.  **Ruta de Análisis Paralela:** Esta "vela viva" viaja por una nueva ruta de mensajería (`liveCandleUpdate` -> `liveCandle`) hasta el `analysis-worker`.
+    3.  **Análisis Hipotético y Seguro:** El `IndicatorEngine` posee un nuevo método, `getIndicatorsForLiveCandle`. Este método realiza un análisis "hipotético": calcula los indicadores usando la vela viva **sin guardarla en el historial permanente**. Esto permite al bot ver el estado del mercado en tiempo real sin corromper sus datos históricos.
+    4.  **Estrategia Intra-Vela:** El `ChannelWorker` utiliza estos indicadores en vivo para ejecutar una nueva lógica de decisión (`evaluateLiveStrategy`), diseñada para identificar oportunidades de alta frecuencia como pullbacks o rupturas incipientes.
 
-### NUEVO: El Sincronizador de Tiempo Dinámico (utils/TimeSyncManager.js)
+## 2. Flujo de Decisión Unificado
 
-Esta es la mejora clave de la v14.1. Para eliminar el "desfase de tiempo" (latencia) que se acumula a medida que los datos viajan por el sistema, se ha implementado un gestor de tiempo central.
+Aunque ahora existen dos fuentes de señales (estratégicas y tácticas), ambas convergen en un único punto de control:
 
-**a) El Problema:** Anteriormente, cada módulo (`pip-worker`, `analysis-worker`, `Operator`) usaba su propio reloj local (`Date.now()`). Esto creaba pequeñas pero significativas discrepancias entre el momento real de un evento de mercado y el momento en que el bot actuaba sobre él.
+*   **El `Humanizer` como Guardián:** Todas las señales, sin importar su origen, son enviadas al `Humanizer`. Su `opportunityBuffer` se vuelve más crucial que nunca, actuando como un filtro que evalúa todas las oportunidades (tanto de velas cerradas como vivas) y selecciona solo la mejor y más disciplinada para ser ejecutada por el `Operator`.
 
-**b) La Solución:**
-1.  **Fuente de Verdad:** El `harvester.py` captura el timestamp original que el bróker incluye en cada `pip` (dato de precio).
-2.  **Calibración Constante:** El `TCPConnector.js` recibe este timestamp y lo usa para alimentar al `TimeSyncManager`. Este módulo compara continuamente el tiempo del bróker con el reloj local del bot y calcula un "desfase" promedio.
-3.  **Tiempo Corregido:** Todos los demás módulos del bot (workers, operator) ya no llaman a `Date.now()`. En su lugar, solicitan el tiempo al `TimeSyncManager`, que les devuelve el tiempo local actual **corregido con el desfase calculado**.
+## 3. Ventajas Clave de la v15.0
 
-**c) El Resultado:** Las velas se construyen, las señales se generan y las órdenes se envían utilizando una única línea de tiempo coherente y sincronizada con el mercado. Esto aumenta drásticamente la precisión del bot, especialmente la fiabilidad del `requestId` para verificar los resultados de las operaciones.
-
-### El ChannelWorker (El Estratega Calibrado)
-
-La lógica de filtros de precisión se mantiene, pero ha sido calibrada para ser más efectiva.
-
-**Filtro de Régimen de Mercado (ADX) Ajustado:** La penalización de confianza por operar en un mercado sin tendencia ha sido reducida. Este ajuste evita la "parálisis por perfección", permitiendo al bot ejecutar operaciones en condiciones estrictas pero realistas, mejorando su capacidad para encontrar oportunidades válidas.
-
-## 3. Inteligencia Adaptativa y Auto-Corrección
-
-Los mecanismos de aprendizaje y auto-calibración de parámetros se mantienen sin cambios, pero ahora se benefician de la mayor precisión temporal de los datos que analizan.
+*   **Sensibilidad al Mercado:** El bot ya no espera. Siente el pulso del mercado tick a tick, permitiéndole medir la volatilidad y la dirección en tiempo real.
+*   **Capacidad Táctica:** Puede identificar y actuar sobre patrones de corta duración, como pullbacks, que eran invisibles para la versión anterior.
+*   **Decisiones Más Rápidas:** Al no tener que esperar el cierre de una vela, el bot puede anticiparse a los movimientos, entrando en operaciones en el momento más oportuno.
+*   **Seguridad y Estabilidad:** La arquitectura de doble flujo garantiza que la nueva capacidad táctica no interfiera con la robusta y probada lógica estratégica, manteniendo la integridad de los datos y la estabilidad del sistema.
 
 ## 4. Conclusión
 
-El Bot Fantasma v14.1 es más preciso y fiable que nunca. Al operar en una línea de tiempo sincronizada dinámicamente con el bróker y con una lógica de decisión calibrada, el bot puede tomar decisiones más rápidas, más seguras y con una mayor correlación con los eventos reales del mercado.
+El Bot Fantasma v15.0 es una máquina de trading más completa. Combina la paciencia y la sabiduría del análisis estratégico a largo plazo con la agilidad y la velocidad de la intuición táctica en tiempo real. Es un sistema que no solo ve el mercado, sino que lo siente.

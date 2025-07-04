@@ -1,43 +1,55 @@
-## Bot Fantasma v14.1 - Plataforma de Trading Sincronizada
+## Bot Fantasma v15.0 - El Intérprete del Flujo
 
-Bot de trading autónomo que utiliza una arquitectura de análisis de contexto y un sistema de sincronización de tiempo dinámico para maximizar la precisión y fiabilidad de las operaciones.
+Bot de trading autónomo que utiliza una arquitectura de análisis de doble flujo (estratégico y táctico) para combinar la fiabilidad del análisis de velas cerradas con la agilidad del análisis en tiempo real.
 
-### Arquitectura y Mejoras Clave (v14.1)
+### Arquitectura y Mejoras Clave (v15.0)
 
-1.  **Sincronizador de Tiempo Dinámico:**
-    - El bot calibra su reloj interno en tiempo real con cada pip recibido del bróker, eliminando el desfase de tiempo acumulado.
-    - Todas las decisiones, desde la construcción de velas hasta la ejecución de órdenes, se basan en una única línea de tiempo de alta precisión, sincronizada con el mercado.
+1.  **NUEVO: Análisis Táctico Intra-Vela:**
+    - El bot ahora analiza cada tick a medida que la vela se forma, permitiéndole reaccionar instantáneamente a los cambios del mercado.
+    - Se ha implementado una lógica de "análisis hipotético" que calcula indicadores en tiempo real sin corromper el historial de datos permanente, garantizando la seguridad y la integridad.
+    - Permite la identificación de oportunidades de alta frecuencia como pullbacks y rupturas incipientes que antes eran invisibles.
 
-2.  **Análisis de Contexto de Mercado:**
-    - El `IndicatorEngine` no solo busca señales, sino que entiende el contexto del mercado (tendencia vs. rango) usando el indicador ADX.
-    - Las señales son filtradas y validadas según el régimen de mercado y la confluencia entre múltiples temporalidades, evitando trampas comunes.
+2.  **Arquitectura de Doble Flujo:**
+    - **Flujo Estratégico:** El sistema tradicional de análisis sobre velas cerradas se mantiene intacto para garantizar señales de alta fiabilidad y confirmación.
+    - **Flujo Táctico:** El nuevo sistema de análisis de "velas vivas" opera en paralelo, proporcionando velocidad y sensibilidad al mercado.
 
-3.  **Lógica de Decisión Calibrada:**
-    - Los filtros de confianza han sido ajustados para ser estrictos pero realistas, permitiendo al bot capitalizar oportunidades válidas sin sufrir de "parálisis por perfección".
+3.  **Sincronizador de Tiempo Dinámico:**
+    - Se mantiene el sistema de calibración de tiempo con el bróker, asegurando que ambos flujos de análisis operen sobre una línea de tiempo de alta precisión.
 
-4.  **Arranque Autónomo con Login Asistido:**
-    - El bot se ejecuta en una instancia de navegador independiente con un perfil dedicado, y solicita al usuario que inicie sesión manualmente para una máxima seguridad y simplicidad.
+4.  **`Humanizer` como Punto de Control Unificado:**
+    - Todas las señales, tanto estratégicas como tácticas, son evaluadas por el `Humanizer`, que actúa como un guardián final para aplicar la disciplina y seleccionar solo las mejores oportunidades.
 
-### Flujo de Datos Sincronizado
+### Flujo de Datos de Doble Vía
 
 ```mermaid
 graph TD
-    A[WebSocket Broker] -->|Pip con Timestamp Original| B(TCPConnector)
-    B --> C(TimeSyncManager)
-    B --> D{pip-worker}
-    D -->|Velas Precisas| E{analysis-worker}
-    E --> F[ChannelManager]
-    F --> G[ChannelWorker por Activo]
-    G --> H[IndicatorEngine]
-    H --> I[Humanizer]
-    I --> J[Operator]
-    J --> K[BrokerConnector]
-    J --> L[TelegramConnector]
+    subgraph Captura y Construcción
+        A[WebSocket Broker] -->|Pip con Timestamp| B(TCPConnector)
+        B --> C{pip-worker}
+        C --> D[CandleBuilder]
+    end
 
-    subgraph Sincronización
-        C --Corrige el tiempo de--> D
-        C --Corrige el tiempo de--> E
-        C --Corrige el tiempo de--> J
+    subgraph Flujo Estratégico (Velas Cerradas)
+        D --o|1. candleClosed| E(analysis-worker)
+        E --> F[ChannelManager]
+        F --> G[ChannelWorker]
+        G --> H((IndicatorEngine - Guarda Estado))
+        H --> I{Señal Estratégica}
+    end
+
+    subgraph Flujo Táctico (Velas Vivas)
+        D --o|2. candleUpdated| J(analysis-worker)
+        J --> K[ChannelManager]
+        K --> L[ChannelWorker]
+        L --> M((IndicatorEngine - Análisis Hipotético))
+        M --> N{Señal Táctica}
+    end
+
+    subgraph Decisión Final
+        I --> O(Humanizer)
+        N --> O
+        O --> P[Operator]
+        P --> Q[Ejecución]
     end
 ```
 

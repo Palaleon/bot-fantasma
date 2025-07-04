@@ -1,7 +1,8 @@
 // /modules/IndicatorEngine.js
 
 // CORREGIDO: Se cambió 'hammer' por el nombre de exportación correcto 'hammerpattern'.
-import { RSI, SMA, ATR, ADX, bullishengulfingpattern, bearishengulfingpattern, hammerpattern } from 'technicalindicators';
+// AÑADIDO: Se importan MACD y BollingerBands para estrategias avanzadas en 1M.
+import { RSI, SMA, ATR, ADX, bullishengulfingpattern, bearishengulfingpattern, hammerpattern, MACD, BollingerBands } from 'technicalindicators';
 import logger from '../utils/logger.js';
 
 class IndicatorEngine {
@@ -14,12 +15,19 @@ class IndicatorEngine {
             this.indicators[tf] = {
                 candles: [],
                 isMature: false,
-                requiredPeriod: 25,
+                requiredPeriod: 26, // Aumentado para dar cabida a los 26 períodos del MACD
                 sma_slow_period: 25,
                 sma_fast_period: 10,
                 rsi_period: 14,
                 atr_period: 14,
                 adx_period: 14,
+                // --- INICIO: Parámetros para Estrategia M1 Avanzada ---
+                macd_fast_period: 12,
+                macd_slow_period: 26,
+                macd_signal_period: 9,
+                bb_period: 20,
+                bb_stddev: 2,
+                // --- FIN: Parámetros para Estrategia M1 Avanzada ---
                 effectiveness: {
                     sma_cross: { score: 0.5, total: 0 },
                     bullish_engulfing: { score: 0.5, total: 0 },
@@ -39,7 +47,7 @@ class IndicatorEngine {
             rsi_period: 14
         };
 
-        logger.info("INDICATOR-ENGINE: Motor inicializado con v3.0 (ADX y Arsenal Chartist expandido).");
+        logger.info("INDICATOR-ENGINE: Motor inicializado con v3.1 (Estrategia 1M Avanzada con MACD/BB).");
     }
 
     getEffectiveness(timeframe) {
@@ -348,6 +356,31 @@ class IndicatorEngine {
                     resistance: Math.max(...lookbackCandles.map(c => c.high)),
                     adx: adxResult ? adxResult.adx : 0
                 };
+
+                // --- INICIO: Cálculo de Indicadores Avanzados para 1M ---
+                if (tf === '1m') {
+                    const macdInput = {
+                        values: closes,
+                        fastPeriod: indicatorSet.macd_fast_period,
+                        slowPeriod: indicatorSet.macd_slow_period,
+                        signalPeriod: indicatorSet.macd_signal_period,
+                        SimpleMAOscillator: false,
+                        SimpleMASignal: false
+                    };
+                    const macdResult = MACD.calculate(macdInput).slice(-1)[0];
+                    
+                    const bbInput = {
+                        period: indicatorSet.bb_period,
+                        values: closes,
+                        stdDev: indicatorSet.bb_stddev
+                    };
+                    const bbResult = BollingerBands.calculate(bbInput).slice(-1)[0];
+
+                    // Añadimos los nuevos indicadores al objeto de valores estratégicos
+                    strategicValues[tf] = { ...strategicValues[tf], macd: macdResult, bb: bbResult };
+                }
+                // --- FIN: Cálculo de Indicadores Avanzados para 1M ---
+
                 chartistSignals[tf] = this._detectAndEvaluatePatterns(tf);
             }
         });
@@ -357,6 +390,78 @@ class IndicatorEngine {
         if (tacticSet.isMature) {
             tacticValues.rsi = RSI.calculate({ values: tacticSet.candles.map(c => c.close), period: tacticSet.rsi_period }).slice(-1)[0];
         }
+
+        return {
+            strategic: strategicValues,
+            tactic: tacticValues,
+            chartist: chartistSignals
+        };
+    }
+
+    getIndicatorsForLiveCandle(liveCandle) {
+        const timeframe = liveCandle.timeframe;
+        const indicatorSet = this.indicators[timeframe];
+        if (!indicatorSet || !indicatorSet.isMature) {
+            return { strategic: null, tactic: null, chartist: null };
+        }
+
+        // Crear una copia de las velas y reemplazar la última con la vela en vivo
+        const liveCandles = [...indicatorSet.candles];
+        liveCandles[liveCandles.length - 1] = liveCandle;
+
+        const strategicValues = {};
+        const chartistSignals = {}; // El análisis chartista en vivo puede ser menos fiable, lo omitimos por ahora
+
+        this.strategicTimeframes.forEach(tf => {
+            const currentIndicatorSet = this.indicators[tf];
+            if (!currentIndicatorSet.isMature) {
+                strategicValues[tf] = null;
+            } else {
+                let candlesToUse = (tf === timeframe) ? liveCandles : currentIndicatorSet.candles;
+                const closes = candlesToUse.map(c => c.close);
+                const highs = candlesToUse.map(c => c.high);
+                const lows = candlesToUse.map(c => c.low);
+
+                const adxInput = { high: highs, low: lows, close: closes, period: currentIndicatorSet.adx_period };
+                const adxResult = ADX.calculate(adxInput).slice(-1)[0];
+
+                strategicValues[tf] = {
+                    sma_slow: SMA.calculate({ values: closes, period: currentIndicatorSet.sma_slow_period }).slice(-1)[0],
+                    sma_fast: SMA.calculate({ values: closes, period: currentIndicatorSet.sma_fast_period }).slice(-1)[0],
+                    rsi: RSI.calculate({ values: closes, period: currentIndicatorSet.rsi_period }).slice(-1)[0],
+                    atr: ATR.calculate({ high: highs, low: lows, close: closes, period: currentIndicatorSet.atr_period }).slice(-1)[0],
+                    adx: adxResult ? adxResult.adx : 0
+                    // Omitimos soporte y resistencia en vivo por simplicidad
+                };
+
+                // --- INICIO: Cálculo de Indicadores Avanzados para 1M (Vela Viva) ---
+                if (tf === '1m') {
+                    const macdInput = {
+                        values: closes,
+                        fastPeriod: currentIndicatorSet.macd_fast_period,
+                        slowPeriod: currentIndicatorSet.macd_slow_period,
+                        signalPeriod: currentIndicatorSet.macd_signal_period,
+                        SimpleMAOscillator: false,
+                        SimpleMASignal: false
+                    };
+                    const macdResult = MACD.calculate(macdInput).slice(-1)[0];
+                    
+                    const bbInput = {
+                        period: currentIndicatorSet.bb_period,
+                        values: closes,
+                        stdDev: currentIndicatorSet.bb_stddev
+                    };
+                    const bbResult = BollingerBands.calculate(bbInput).slice(-1)[0];
+
+                    // Añadimos los nuevos indicadores al objeto de valores estratégicos
+                    strategicValues[tf] = { ...strategicValues[tf], macd: macdResult, bb: bbResult };
+                }
+                // --- FIN: Cálculo de Indicadores Avanzados para 1M (Vela Viva) ---
+            }
+        });
+
+        // Tactic RSI también puede ser calculado en vivo si es necesario
+        const tacticValues = { rsi: null };
 
         return {
             strategic: strategicValues,

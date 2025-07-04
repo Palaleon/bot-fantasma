@@ -66,6 +66,23 @@ class ChannelManager {
         // Si no se generó ninguna señal, devuelve null.
         return null;
     }
+
+    processLiveCandle(candleData) {
+        const { asset, timeframe } = candleData;
+        if (!asset || !timeframe) {
+            return null;
+        }
+
+        const channel = this.getChannel(asset, true);
+        if (channel) {
+            const signal = channel.handleLiveCandle(candleData);
+            if (signal) {
+                logger.warn(`CHANNEL-MANAGER: ¡SEÑAL EN VIVO GENERADA por ${asset} en temporalidad ${timeframe}!`, { asset: asset });
+                return signal;
+            }
+        }
+        return null;
+    }
 }
 
 export default ChannelManager;

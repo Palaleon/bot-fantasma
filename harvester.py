@@ -14,7 +14,8 @@ from playwright.async_api import async_playwright
 
 
 # --- Configuración ---
-LOG_LEVEL = logging.INFO
+# MODIFICACIÓN SUGERIDA: Cambia a logging.DEBUG para obtener los logs más detallados del watchdog.
+LOG_LEVEL = logging.DEBUG
 TCP_HOST = "127.0.0.1"
 TCP_PORT = 8765
 BROWSER_CDP_ENDPOINT = "http://localhost:9222"
@@ -36,17 +37,28 @@ logging.basicConfig(
 # ==================================================================================================
 class ActiveAssetManager:
     """
-    Utiliza un socket expuesto a través de un "canal lateral" para emitir mensajes.
+    Gestiona los activos, sus secuencias de carga, los mecanismos de refresco
+    y la simulación de actividad de usuario.
     """
     def __init__(self):
         self.page = None
         self.active_assets = set()
         self.lock = asyncio.Lock()
-        self.primer_activo_procesado = False # Flag para el primer activo
-        # --- INICIO DE LA MODIFICACIÓN ---
-        self.last_pip_timestamps = {} # Diccionario para rastrear { 'activo': timestamp }
-        self.refreshing_now = set()   # Conjunto para evitar refrescos simultáneos del mismo activo
-        # --- FIN DE LA MODIFICACIÓN ---
+        self.primer_activo_procesado = False
+
+        # --- DOCUMENTACIÓN DE COMPONENTES DEL WATCHDOG Y REFRESH ---
+        # `last_pip_timestamps`: Diccionario. Almacena el último momento en que se vio un pip
+        # para cada activo. Es la memoria del watchdog para detectar inactividad.
+        # { 'activo': timestamp }
+        self.last_pip_timestamps = {} 
+        
+        # `refreshing_now`: Conjunto. Actúa como un "lock" o semáforo para cada activo.
+        # Si un activo está en este conjunto, significa que uno de los sistemas de refresco
+        # está trabajando en él, previniendo que el otro sistema interfiera y cause una
+        # condición de carrera.
+        self.refreshing_now = set()   
+        # --- FIN DE DOCUMENTACIÓN ---
+
         logging.info("[ActiveManager] Inicializado en modo de canal lateral.")
 
     def set_page(self, page):
@@ -55,11 +67,11 @@ class ActiveAssetManager:
         logging.info("[ActiveManager] Página de Playwright recibida.")
 
     def start_background_tasks(self):
-        logging.info("[ActiveManager] Iniciando tareas de fondo (bucle de refresco).")
+        """Inicia todas las tareas de fondo: refrescos, watchdog y simulación de actividad."""
+        logging.info("[ActiveManager] Iniciando tareas de fondo (refresco, watchdog y simulación de actividad).")
         asyncio.create_task(self._refresh_loop())
-        # --- INICIO DE LA MODIFICACIÓN ---
-        asyncio.create_task(self._pip_watchdog_loop()) # Iniciar el nuevo bucle vigilante
-        # --- FIN DE LA MODIFICACIÓN ---
+        asyncio.create_task(self._pip_watchdog_loop())
+        asyncio.create_task(self._simulate_user_activity_loop())
 
     async def send_message(self, message):
         """Ejecuta JS para enviar un mensaje a través del socket expuesto."""
@@ -83,23 +95,28 @@ class ActiveAssetManager:
         except Exception as e:
             logging.error(f"[ActiveManager] Error al ejecutar script en la página: {e}")
 
-    # --- INICIO DE LA MODIFICACIÓN ---
-    # --- AÑADE ESTOS CUATRO NUEVOS MÉTODOS A LA CLASE ActiveAssetManager ---
-
     def start_pip_monitoring(self, asset_name):
-        """Activa el monitoreo de pips para un activo que está listo."""
+        """
+        Activa el monitoreo de pips para un activo que ha completado su precarga.
+        Este es el punto de entrada para que el watchdog comience a vigilar un activo.
+        """
         if asset_name in self.active_assets and asset_name not in self.last_pip_timestamps:
             logging.info(f"[Watchdog] Iniciando monitoreo de pips para {asset_name}.")
-            # Usamos el tiempo del bucle de eventos de asyncio
             self.last_pip_timestamps[asset_name] = asyncio.get_running_loop().time()
 
     def update_last_pip_time(self, asset_name):
-        """Actualiza el timestamp del último pip recibido para un activo."""
+        """
+        Actualiza el timestamp del último pip recibido. Se llama cada vez que llega un pip.
+        Esto "resetea" el contador de 5 segundos del watchdog.
+        """
         if asset_name in self.last_pip_timestamps:
             self.last_pip_timestamps[asset_name] = asyncio.get_running_loop().time()
 
     async def _force_refresh_asset(self, asset_name):
-        """Función para ejecutar la secuencia de refresco para un activo específico."""
+        """
+        MECANISMO DE REFRESH 2/2: Refresco de Emergencia (Reactivo).
+        Ejecutado por el watchdog cuando detecta inactividad.
+        """
         if asset_name in self.refreshing_now:
             logging.warning(f"[Watchdog] El refresco para {asset_name} ya está en curso.")
             return
@@ -109,31 +126,66 @@ class ActiveAssetManager:
         try:
             refresh_sequence = self._get_refresh_sequence(asset_name)
             await self._run_sequence(refresh_sequence, sequence_name=f"refresco forzado ({asset_name})")
-            # Actualizar el timestamp para reiniciar el contador del watchdog
-            self.last_pip_timestamps[asset_name] = asyncio.get_running_loop().time()
+            if asset_name in self.last_pip_timestamps:
+                self.last_pip_timestamps[asset_name] = asyncio.get_running_loop().time()
         finally:
             self.refreshing_now.remove(asset_name)
 
     async def _pip_watchdog_loop(self):
-        """Bucle que comprueba la inactividad de pips y fuerza un refresco si es necesario."""
+        """
+        Bucle vigilante que comprueba la inactividad de pips.
+        """
         logging.info("[Watchdog] El vigilante de pips está activo.")
         while True:
-            await asyncio.sleep(2) # El vigilante comprueba cada 2 segundos
+            await asyncio.sleep(2)
             
-            # Continuar solo si hay una página y activos que monitorear
             if not self.page or not self.last_pip_timestamps:
                 continue
 
             current_time = asyncio.get_running_loop().time()
-            # Crear una copia de las claves para iterar de forma segura
+            
+            logging.debug(f"[Watchdog] Verificando {len(self.last_pip_timestamps)} activo(s): {list(self.last_pip_timestamps.keys())}")
+
             assets_to_check = list(self.last_pip_timestamps.keys())
 
             for asset in assets_to_check:
                 last_pip_time = self.last_pip_timestamps.get(asset)
                 if last_pip_time and (current_time - last_pip_time > 5):
-                    # Crear una nueva tarea para no bloquear el bucle del watchdog
                     asyncio.create_task(self._force_refresh_asset(asset))
-    # --- FIN DE LA MODIFICACIÓN ---
+    
+    async def _simulate_user_activity_loop(self):
+        """
+        MECANISMO DE SIMULACIÓN DE ACTIVIDAD.
+        Tarea no bloqueante que simula actividad humana para evitar timeouts por inactividad.
+        """
+        logging.info("[ActivitySim] Simulador de actividad de usuario iniciado.")
+        while True:
+            sleep_duration_seconds = random.uniform(7 * 60, 10 * 60)
+            logging.info(f"[ActivitySim] Próxima simulación de actividad en {sleep_duration_seconds / 60:.2f} minutos.")
+            await asyncio.sleep(sleep_duration_seconds)
+
+            if not self.page or self.page.is_closed():
+                logging.warning("[ActivitySim] Omitiendo simulación, la página no está disponible o está cerrada.")
+                continue
+
+            try:
+                logging.info("[ActivitySim] Iniciando simulación de actividad de usuario (foco y movimiento de mouse).")
+
+                await self.page.focus()
+                await asyncio.sleep(random.uniform(0.5, 1.5))
+
+                viewport_size = self.page.viewport_size
+                if viewport_size:
+                    x = random.uniform(viewport_size['width'] * 0.1, viewport_size['width'] * 0.9)
+                    y = random.uniform(viewport_size['height'] * 0.1, viewport_size['height'] * 0.9)
+                    
+                    await self.page.mouse.move(x, y, steps=random.randint(5, 15))
+                    logging.info(f"[ActivitySim] Mouse movido a ({int(x)}, {int(y)}).")
+                
+                logging.info("[ActivitySim] Simulación de actividad completada con éxito.")
+
+            except Exception as e:
+                logging.error(f"[ActivitySim] Error durante la simulación de actividad: {e}")
 
     def _get_warmup_sequence(self, asset_name, is_first_asset=False):
         """
@@ -180,21 +232,38 @@ class ActiveAssetManager:
             await asyncio.sleep(random.uniform(0.3, 0.8))
 
     async def _refresh_loop(self):
+        """
+        MECANISMO DE REFRESH 1/2: Refresco Programado (Proactivo).
+        """
         while True:
             await asyncio.sleep(2 * 60)
             if not self.active_assets:
                 continue
-            logging.info(f"[ActiveManager] Iniciando ciclo de refresco para {len(self.active_assets)} activo(s).")
+            logging.info(f"[ActiveManager] Iniciando ciclo de refresco programado para {len(self.active_assets)} activo(s).")
             async with self.lock:
                 assets_to_refresh = list(self.active_assets)
+
             for asset in assets_to_refresh:
                 if not self.page:
-                    logging.warning("[ActiveManager] Omitiendo refresco, la página no está disponible.")
+                    logging.warning("[ActiveManager] Omitiendo refresco programado, la página no está disponible.")
                     break
-                logging.info(f"[ActiveManager] Refrescando activo: {asset}")
-                refresh_sequence = self._get_refresh_sequence(asset)
-                await self._run_sequence(refresh_sequence, sequence_name="refresco")
-                logging.info(f"[ActiveManager] Refresco para {asset} completado. Esperando para el siguiente.")
+                
+                if asset in self.refreshing_now:
+                    logging.info(f"[ActiveManager] Omitiendo refresco programado para {asset} porque un refresco forzado ya está en curso.")
+                    continue
+                
+                self.refreshing_now.add(asset)
+                try:
+                    logging.info(f"[ActiveManager] Refrescando activo (programado): {asset}")
+                    refresh_sequence = self._get_refresh_sequence(asset)
+                    await self._run_sequence(refresh_sequence, sequence_name="refresco programado")
+                    logging.info(f"[ActiveManager] Refresco programado para {asset} completado.")
+                except Exception as e:
+                    logging.error(f"[ActiveManager] Error durante el refresco programado de {asset}: {e}")
+                finally:
+                    self.refreshing_now.remove(asset)
+
+                logging.info(f"[ActiveManager] Esperando para el siguiente refresco programado.")
                 await asyncio.sleep(random.uniform(60, 90))
             logging.info("[ActiveManager] Ciclo de refresco de todos los activos completado.")
 
@@ -215,12 +284,17 @@ class ActiveAssetManager:
                 
                 logging.info(f"[ActiveManager] Procesando nuevo activo {asset_name} para calentamiento.")
                 
+                # <<< INICIO DE LA CORRECCIÓN DE LA CONDICIÓN DE CARRERA >>>
+                # Se mueve esta línea ANTES de la secuencia de calentamiento.
+                # Esto asegura que el activo ya se considere "activo" para cuando
+                # la precarga termine y se intente iniciar el watchdog.
+                self.active_assets.add(asset_name)
+                # <<< FIN DE LA CORRECCIÓN DE LA CONDICIÓN DE CARRERA >>>
+
                 warmup_sequence = self._get_warmup_sequence(asset_name, is_first_asset=es_el_primero)
                 
                 await self._run_sequence(warmup_sequence, sequence_name="calentamiento")
-                
-                self.active_assets.add(asset_name)
-                
+                                
                 if es_el_primero:
                     self.primer_activo_procesado = True
                 
@@ -249,17 +323,22 @@ class AssetStateManager:
                 self.check_if_ready(asset_name)
     def is_ready_for_pips(self, asset_name):
         return self.states.get(asset_name, {}).get("_notified", False)
+    
     def check_if_ready(self, asset_name):
         state = self._get_or_create_asset_state(asset_name)
-        if state.get("_notified", False): return
-        if all(state.get(tf, False) for tf in REQUIRED_TIMEFRAMES):
+        if state.get("_notified", False):
+            return
+
+        is_ready = all(state.get(tf, False) for tf in REQUIRED_TIMEFRAMES)
+        
+        if is_ready:
             logging.warning(f"¡PRECARGA COMPLETA! El activo {asset_name} está listo. Se habilita el flujo de pips en tiempo real.")
             state["_notified"] = True
-            # --- INICIO DE LA MODIFICACIÓN ---
-            # Notificar al ActiveAssetManager que puede empezar a monitorear este activo
             if self.active_asset_manager:
                 self.active_asset_manager.start_pip_monitoring(asset_name)
-            # --- FIN DE LA MODIFICACIÓN ---
+        else:
+            missing_timeframes = [tf for tf in REQUIRED_TIMEFRAMES if not state.get(tf, False)]
+            logging.info(f"[Precarga] Esperando por {asset_name}. Faltan timeframes (segundos): {missing_timeframes}")
 
 class TCPServer:
     def __init__(self, host, port):
@@ -270,7 +349,7 @@ class TCPServer:
         self.sequence_counters = {}
     async def _sender_loop(self):
         logging.info("Bucle de envío iniciado. Esperando mensajes...")
-        DELIMITER = b'\n==EOM==\n' # Usaremos un delimitador claro y único
+        DELIMITER = b'\n==EOM==\n'
         while True:
             message = await self.message_queue.get()
             sent = False
@@ -296,15 +375,12 @@ class TCPServer:
         logging.info(f"Bot de Node.js conectado desde {client_addr}")
         self.writer = writer
     def send(self, data):
-        # Interceptar y añadir ID secuencial a los pips
         if data.get("type") == "pip":
             asset = data.get("payload", {}).get("asset")
             if asset:
-                # Inicializar el contador si es la primera vez que vemos el activo
                 if asset not in self.sequence_counters:
                     self.sequence_counters[asset] = 0
                 
-                # Incrementar y añadir el ID de secuencia al payload
                 self.sequence_counters[asset] += 1
                 data["payload"]["sequence_id"] = self.sequence_counters[asset]
 
@@ -320,10 +396,7 @@ class WebSocketHarvester:
         self.tcp_server = tcp_server
         self.asset_manager = asset_manager
         self.active_asset_manager = active_asset_manager
-        # --- INICIO DE LA MODIFICACIÓN ---
-        # Registro para evitar paquetes históricos duplicados.
         self._sent_historical_packets = set()
-        # --- FIN DE LA MODIFICACIÓN ---
 
     def _parse_data(self, payload_str):
         try:
@@ -351,17 +424,12 @@ class WebSocketHarvester:
 
         if msg_type == "historical":
             asset, timeframe = data["asset"], data["tf"]
-            
-            # --- INICIO DE LA MODIFICACIÓN ---
-            # Crear un identificador único para el paquete basado en el activo y el periodo.
             packet_id = (asset, timeframe)
 
-            # Verificar si este paquete ya fue enviado. Si es así, se omite y se registra.
             if packet_id in self._sent_historical_packets:
-                logging.warning(f"Paquete histórico duplicado para {asset} ({timeframe}s) detectado. Se omite el envío.")
-                return # Detener el procesamiento de este paquete duplicado.
-            # --- FIN DE LA MODIFICACIÓN ---
-
+                logging.debug(f"Paquete histórico duplicado para {asset} ({timeframe}s) detectado. Se omite el envío.")
+                return
+            
             logging.info(f"Paquete histórico recibido para {asset} con timeframe {timeframe}s.")
             if timeframe in REQUIRED_TIMEFRAMES:
                 self.asset_manager.mark_as_received(asset, timeframe)
@@ -371,11 +439,7 @@ class WebSocketHarvester:
                 
                 if self.tcp_server.send(message):
                     logging.info(f"Encolado paquete histórico de {len(formatted_candles)} velas para {asset} ({timeframe}s).")
-                    
-                    # --- INICIO DE LA MODIFICACIÓN ---
-                    # Si el envío fue exitoso, se añade al registro para no volver a enviarlo.
                     self._sent_historical_packets.add(packet_id)
-                    # --- FIN DE LA MODIFICACIÓN ---
 
                 if timeframe == 60:
                     logging.info(f"Encolando {len(pips)} pips de reanudación para {asset} (1m)...")
@@ -383,10 +447,7 @@ class WebSocketHarvester:
         
         elif msg_type == "realtime_pip":
             if self.asset_manager.is_ready_for_pips(data["asset"]):
-                # --- INICIO DE LA MODIFICACIÓN ---
-                # Antes de enviar, actualizamos el timestamp del último pip visto
                 self.active_asset_manager.update_last_pip_time(data["asset"])
-                # --- FIN DE LA MODIFICACIÓN ---
                 self.tcp_server.send({"type": "pip", "payload": data})
 
     def setup_websocket_listener(self, ws):
@@ -405,20 +466,23 @@ class WebSocketHarvester:
                 return
             context = browser.contexts[0] if browser.contexts else await browser.new_context()
 
-            # --- INYECCIÓN DEL SCRIPT DE CAPTURA ---
-            init_script = """
-            (() => {
+            init_script = f"""
+            (() => {{
                 if (WebSocket.prototype.originalSend) return;
                 WebSocket.prototype.originalSend = WebSocket.prototype.send;
-                WebSocket.prototype.send = function(data) {
-                    if (!window.harvesterSocket) {
-                        console.log('Harvester: Capturado el objeto WebSocket y asignado a window.harvesterSocket');
-                        window.harvesterSocket = this;
-                    }
+                WebSocket.prototype.send = function(data) {{
+                    if (this.url.includes('{WEBSOCKET_URL_FRAGMENT}')) {{
+                        if (window.harvesterSocket !== this) {{
+                            console.log('Harvester: Referencia de WebSocket actualizada a nueva instancia.');
+                            window.harvesterSocket = this;
+                        }}
+                    }}
                     WebSocket.prototype.originalSend.apply(this, arguments);
-                };
-            })();
+                }};
+                console.log('Harvester: El parche de WebSocket autoreparable ha sido aplicado.');
+            }})();
             """
+            
             await context.add_init_script(init_script)
             
             page = await context.new_page()

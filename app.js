@@ -162,6 +162,9 @@ class TradingBotFantasmaV4 {
         if (msg.type === 'candleClosed') {
           this.analysisWorker.postMessage({ type: 'candle', data: msg.data });
 		  this.socketExporter.broadcast({ type: 'candle', data: msg.data });
+        } else if (msg.type === 'liveCandleUpdate') {
+          this.analysisWorker.postMessage({ type: 'liveCandle', data: msg.data });
+          this.socketExporter.broadcast({ type: 'liveCandle', data: msg.data });
         }
       });
       this.analysisWorker.on('message', (msg) => { 
@@ -179,11 +182,9 @@ class TradingBotFantasmaV4 {
         this.tradeResultManager.mapTradeId(requestId, uniqueId);
       });
 
-      // Cuando el oído detecta una lista de resultados, se la pasa al cerebro para que la procese.
-      this.webSocketTrader.on('tradeResult', (resultData) => {
-        if (resultData && resultData.deals) {
-          this.tradeResultManager.processResults(resultData.deals);
-        }
+      // Cuando el oído detecta un resultado individual, se lo pasa al cerebro para que lo procese.
+      this.webSocketTrader.on('individualTradeResult', (deal) => {
+        this.tradeResultManager.processIndividualResult(deal);
       });
 
       // 3. La conexión de aprendizaje ahora escucha al "cerebro"
