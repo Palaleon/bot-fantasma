@@ -1,11 +1,11 @@
 {
   "persona": {
-    "state": "CALM",
+    "state": "CAUTIOUS",
     "winStreak": 0,
     "lossStreak": 0,
     "investmentFactor": 1,
-    "consecutiveLosses": 0,
-    "consecutiveWins": 1
+    "consecutiveLosses": 3,
+    "consecutiveWins": 0
   },
   "weeklyActivity": {
     "Monday": {},
@@ -2826,6 +2826,27 @@
       },
       "timestamp": 1751596022327,
       "personaState": "CALM"
+    },
+    {
+      "decision": "put",
+      "confidence": 0.8999999999999999,
+      "diagnosis": {
+        "source": "Patrón de Velas Fiable",
+        "context": [
+          "Alineado con 5m."
+        ]
+      },
+      "asset": "AUDJPY_otc",
+      "channel": "AUDJPY_otc",
+      "triggeredBy": "1m",
+      "id": "sig_mco747vx_z0eug",
+      "executionParams": {
+        "investment": 21,
+        "delayMs": 1526,
+        "expiration": 1
+      },
+      "timestamp": 1751596142579,
+      "personaState": "CALM"
     }
   ],
   "assetBehavior": {
@@ -2878,8 +2899,8 @@
       "probationEnd": 1751584385653
     },
     "AUDJPY_otc": {
-      "losses": 2,
-      "probationEnd": 1751589904808
+      "losses": 3,
+      "probationEnd": 1751597105509
     },
     "USDPKR_otc": {
       "losses": 0,
@@ -2900,7 +2921,11 @@
     "USDJPY_otc": {
       "losses": 2,
       "probationEnd": 1751596567591
+    },
+    "EURAUD_otc": {
+      "losses": 2,
+      "probationEnd": 1751597107897
     }
   },
-  "lastSignalPattern": "USDPKR_otc-1m-call"
+  "lastSignalPattern": "EURAUD_otc-5m-call"
 }

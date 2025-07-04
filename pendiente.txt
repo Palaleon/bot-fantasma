@@ -5,25 +5,21 @@ Antes que nada para que comprendas la arquitectura del bot analiza como-funciona
 luego busca la solucion sin romper la arquitectura del siguiente problema:
 
 
-1- El bot tiene muy mal winrate en operaciones de 1m, es como si no usara lo necesario para ser preciso en esta temporalidad y es muy ingenuo, en el resto de temporalidades tiene un buen winrate.
-2- el bot no tiene conciencia de cuanto saldo tiene.
+Despues de saber quién es el Humanizer, verifica por no tiene conciencia de el dinero que tiene. 
+
+Ejemplo se podría enviar un mensaje al broker:
+
+por el metodo de emitir
+donde
+42["balance/list"]
+
+repuesta del broker:
+'Mensaje Binario'
+'caracterbinario'{"liveBalance":0.15,"demoBalance":10274.95,"tournamentsBalances":{"430":0.1,"436":0.03,"440":0,"562":0,"568":0.78,"571":0,"574":0,"577":0.14,"580":0.28,"586":0.02,"589":0.67,"592":0,"595":0.55,"598":0.91,"601":0.8,"605":0.18,"610":100.6,"617":85.02,"626":100,"632":12.2,"657":100,"672":100,"703":0,"729":115.68,"738":100},"dayLimit":0,"dayBalance":-200.97}
+
+además el bot no sabe si está en estado real o demo. ya que en varios datos de mensajes de comunicación con el broker se usa el dato de 'isDemo: 1' y esto aun no está configurable en variable dentro de .env
 
 REQUISITOS:
 JAMAS SUPONGAS, BASATE EN CODE REAL Y ACTUAL.
 MANTENTE SIEMPRE CON LA MENTE ABIERTA A DETALLES PARA NO PASARLOS POR ALTO.
 
-# Pendiente: Mejora de Precisión con RSI de 5s en 1M y 5M
-
-## Contexto de la Pregunta del Jefe:
-El jefe observó que, a pesar de que el bot genera velas de 5 segundos, estas no estaban siendo utilizadas para refinar la precisión de las operaciones en temporalidades de 1 minuto y 5 minutos. Se identificó que el `IndicatorEngine` ya calcula un RSI para estas velas de 5s, pero la lógica de decisión en `ChannelWorker` no lo estaba empleando como filtro.
-
-## Problema Identificado:
-El bot no estaba explotando al máximo la información de alta frecuencia disponible (velas de 5s) para validar o rechazar señales generadas en temporalidades ligeramente superiores (1m y 5m). Esto podría llevar a entradas subóptimas o "ruidosas" en mercados volátiles.
-
-## Solución Propuesta:
-Implementar el RSI de 5s como un filtro de confirmación final dentro de la función `_getQuantitativeSignal` en `modules/ChannelWorker.js` para las temporalidades de 1m y 5m.
-
-*   **Para señales de COMPRA (`call`):** La señal solo se confirmará si el RSI de 5s está por debajo de un umbral (ej. 60), evitando comprar en picos de sobrecompra momentáneos.
-*   **Para señales de VENTA (`put`):** La señal solo se confirmará si el RSI de 5s está por encima de un umbral (ej. 40), evitando vender en valles de sobreventa momentáneos.
-
-Esto permitirá que el bot tome decisiones más precisas al considerar el momentum inmediato del precio, reduciendo el "ruido" y mejorando la calidad de las entradas.
