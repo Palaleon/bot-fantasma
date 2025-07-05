@@ -107,3 +107,6 @@ graph TD
     npm start
     ```
     El bot abrirá una ventana de Brave. Inicie sesión en el bróker y luego presione Enter en la consola del bot para continuar.
+
+
+SI QUIERES FORMAR PARTE DE ESTE PROYECTO CONMIGO ENVIAME UN MENSAJE AL TELEGRAM: https://t.me/Palaleon
