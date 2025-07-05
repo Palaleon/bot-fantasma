@@ -146,7 +146,7 @@ program
     }
   });
 
-// Comando para exportar datos
+// Comando para exportar datos SDDS
 program
   .command('export')
   .description('Exportar historial de trades')

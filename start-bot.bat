@@ -1,5 +1,5 @@
 @echo off
-REM Script para iniciar el Bot Fantasma con login manual
+REM Script para iniciar el Bot Fantasma con login manual JEJEJE
 
 echo.
 echo ===================================================================
