@@ -46,6 +46,8 @@ const config = {
     // basándose en la confianza de la señal.
     minInvestment: parseFloat(process.env.MIN_INVESTMENT) || 5,
     maxInvestment: parseFloat(process.env.MAX_INVESTMENT) || 25,
+	accountMode: process.env.ACCOUNT_MODE || 'demo',
+    riskPerTrade: parseFloat(process.env.RISK_PER_TRADE) || 0.01 // <-- AÑADE ESTA LÍNEA
   },
   // =======================================================================
 

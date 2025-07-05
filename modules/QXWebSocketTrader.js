@@ -79,57 +79,43 @@ class QXWebSocketTrader extends EventEmitter {
 
         // Intentamos procesar el mensaje binario/de resultado
         try {
-            // Primero, limpiamos cualquier caracter binario raro que venga al inicio.
-            const cleanText = payload.replace(/^[\x00-\x1F\x7F-\x9F]+/, '');
-            const parsedData = JSON.parse(cleanText);
+    // ✅ NUEVO: Primero verificamos si es un mensaje de balance.
+    if (payload.includes('liveBalance') && payload.includes('demoBalance')) {
+        // Extraemos solo la parte JSON del mensaje.
+        const balanceData = JSON.parse(payload.substring(payload.indexOf('{')));
+        // Emitimos el evento que app.js está esperando.
+        this.emit('balanceUpdated', balanceData);
+        return; // Terminamos aquí, ya que no es un mensaje de trade.
+    }
 
-            // AHORA VIENE LA MAGIA: ¿Qué tipo de mensaje es?
-            
-            // CASO 1: Es el mensaje de APERTURA de operación.
-            // Lo identificamos porque tiene un 'requestId' y un 'id' único. 
-            if (parsedData && parsedData.requestId && parsedData.id) {
-                logger.info(`[Oído CDP] ✅ ¡Apertura de operación detectada! Mapeando ID [${parsedData.id}] con Request [${parsedData.requestId}].`);
-                // Emitimos un nuevo evento que nuestro TradeResultManager escuchará.
-                this.emit('tradeOpened', { 
-                    requestId: parsedData.requestId, 
-                    uniqueId: parsedData.id 
-                });
-            }
+    // Si no fue un mensaje de balance, continuamos con la lógica de siempre para los trades.
+    const cleanText = payload.replace(/^[\x00-\x1F\x7F-\x9F]+/, '');
+    const parsedData = JSON.parse(cleanText);
 
-            // CASO 2 y 3: Procesamiento Unificado de Mensajes de Deals (Resultados y Actualizaciones)
-            let dealsList = [];
-            let messageType = 'Desconocido';
+    if (parsedData && parsedData.requestId && parsedData.id) {
+        this.emit('tradeOpened', { 
+            requestId: parsedData.requestId, 
+            uniqueId: parsedData.id 
+        });
+    }
 
-            // Identificamos si es un mensaje de resultado final (objeto con lista 'deals')
-            if (parsedData && typeof parsedData === 'object' && !Array.isArray(parsedData) && parsedData.deals && Array.isArray(parsedData.deals)) {
-                dealsList = parsedData.deals;
-                messageType = 'Resultado Final';
-            }
-            // O si es un mensaje de actualización de estado (array)
-            else if (Array.isArray(parsedData)) {
-                dealsList = parsedData;
-                messageType = 'Actualización de Estado';
-            }
+    let dealsList = [];
+    if (parsedData && typeof parsedData === 'object' && !Array.isArray(parsedData) && parsedData.deals && Array.isArray(parsedData.deals)) {
+        dealsList = parsedData.deals;
+    } else if (Array.isArray(parsedData)) {
+        dealsList = parsedData;
+    }
 
-            if (dealsList.length > 0) {
-                // logger.info(`[Oído CDP] 📬 Mensaje de '${messageType}' detectado. Contiene ${dealsList.length} deal(s). Procesando...`);
-                for (const deal of dealsList) {
-                    // LA REGLA DE ORO: Una operación CERRADA tiene un ID, un closePrice != 0 y una propiedad de profit.
-                    if (deal && deal.id && deal.closePrice !== 0 && deal.hasOwnProperty('profit')) {
-                        logger.info(`[Oído CDP] -> ✅ Detectada operación CERRADA. Emitiendo resultado para ID: ${deal.id}`);
-                        this.emit('individualTradeResult', deal);
-                    }
-                    // Si tiene ID pero no cumple la regla de oro, es una actualización de una operación abierta.
-                    else if (deal && deal.id) {
-                        logger.info(`[Oído CDP] -> 🚫 Detectada actualización de operación ABIERTA. Ignorando ID: ${deal.id}`);
-                        // No se hace nada. Es el comportamiento inteligente que queremos.
-                    }
-                }
+    if (dealsList.length > 0) {
+        for (const deal of dealsList) {
+            if (deal && deal.id && deal.closePrice !== 0 && deal.hasOwnProperty('profit')) {
+                this.emit('individualTradeResult', deal);
             }
-            
-        } catch (e) {
-            // Ignoramos los mensajes que no son JSON, como los pings del servidor. No son errores.
         }
+    }
+} catch (e) {
+    // Ignoramos los mensajes que no son JSON, como los pings. No son errores.
+}
       });
 
       logger.info('[Híbrido] ✅ El "Oído de Harvester" está activo y escuchando resultados.');
@@ -180,6 +166,12 @@ class QXWebSocketTrader extends EventEmitter {
     logger.info(`✅ Orden enviada al socket: ${payload}`);
     return ordenConfig.requestId;
   }
+  async requestBalance() {
+    if (!(await this.isReady())) throw new Error("Socket no disponible para solicitar balance.");
+    const payload = '42["balance/list"]';
+    await this.page.evaluate((p) => window.__socket.send(p), payload);
+    logger.info('[Híbrido] Solicitud de balance enviada al broker.');
+}
 
   async cleanup() {
     logger.info("QXWebSocketTrader: Ejecutando limpieza de recursos...");

@@ -21,7 +21,7 @@ const ensureAssetBuilders = (asset) => {
     logger.info(`WORKER-PIP: Creando juego de CandleBuilders para nuevo activo: ${asset}`, { asset: asset });
     assetBuilders[asset] = {};
     for (const [key, periodInSeconds] of Object.entries(timeframes)) {
-        const builder = new CandleBuilder(periodInSeconds, key, () => Math.floor(timeSyncManager.getCorregido() / 1000));
+        const builder = new CandleBuilder(periodInSeconds, key, asset, () => Math.floor(timeSyncManager.getCorregido() / 1000));
         builder.on('candleClosed', (candleData) => {
             parentPort.postMessage({ 
                 type: 'candleClosed', 

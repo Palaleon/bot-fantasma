@@ -1,55 +1,66 @@
-## Bot Fantasma v15.0 - El Intérprete del Flujo
+## Bot Fantasma v16.0 - El Auditor
 
-Bot de trading autónomo que utiliza una arquitectura de análisis de doble flujo (estratégico y táctico) para combinar la fiabilidad del análisis de velas cerradas con la agilidad del análisis en tiempo real.
+Bot de trading autónomo con una arquitectura de análisis de doble flujo (estratégico y táctico), potenciado por un sistema de Inteligencia Artificial completamente auditado y corregido para garantizar la máxima precisión y fiabilidad.
 
-### Arquitectura y Mejoras Clave (v15.0)
+### Arquitectura y Mejoras Clave (v16.0)
 
-1.  **NUEVO: Análisis Táctico Intra-Vela:**
-    - El bot ahora analiza cada tick a medida que la vela se forma, permitiéndole reaccionar instantáneamente a los cambios del mercado.
-    - Se ha implementado una lógica de "análisis hipotético" que calcula indicadores en tiempo real sin corromper el historial de datos permanente, garantizando la seguridad y la integridad.
-    - Permite la identificación de oportunidades de alta frecuencia como pullbacks y rupturas incipientes que antes eran invisibles.
+1.  **Sistema de IA Auditado y Corregido:**
+    -   Se han resuelto inconsistencias críticas en la captura y procesamiento de datos entre el entorno de producción (JavaScript) y el de entrenamiento (Python).
+    -   El modelo de IA ahora se entrena de forma matemáticamente correcta, aprendiendo de manera equilibrada de victorias y derrotas.
+    -   La interpretación de las predicciones de la IA en tiempo real es precisa, gracias a la correcta conversión de "logits" a probabilidades.
 
-2.  **Arquitectura de Doble Flujo:**
-    - **Flujo Estratégico:** El sistema tradicional de análisis sobre velas cerradas se mantiene intacto para garantizar señales de alta fiabilidad y confirmación.
-    - **Flujo Táctico:** El nuevo sistema de análisis de "velas vivas" opera en paralelo, proporcionando velocidad y sensibilidad al mercado.
+2.  **Análisis Táctico Intra-Vela:**
+    -   El bot analiza cada tick a medida que la vela se forma, permitiendo reacciones instantáneas a los cambios del mercado.
+    -   Utiliza un "análisis hipotético" para calcular indicadores en tiempo real sin corromper el historial de datos permanente.
 
-3.  **Sincronizador de Tiempo Dinámico:**
-    - Se mantiene el sistema de calibración de tiempo con el bróker, asegurando que ambos flujos de análisis operen sobre una línea de tiempo de alta precisión.
+3.  **Arquitectura de Doble Flujo:**
+    -   **Flujo Estratégico:** Análisis robusto sobre velas cerradas para señales de alta fiabilidad.
+    -   **Flujo Táctico:** Análisis ágil de "velas vivas" para sensibilidad y velocidad.
 
-4.  **`Humanizer` como Punto de Control Unificado:**
-    - Todas las señales, tanto estratégicas como tácticas, son evaluadas por el `Humanizer`, que actúa como un guardián final para aplicar la disciplina y seleccionar solo las mejores oportunidades.
+4.  **Sincronizador de Tiempo Dinámico:**
+    -   Calibración de tiempo en tiempo real con el bróker para una precisión operativa superior.
 
-### Flujo de Datos de Doble Vía
+5.  **`Humanizer` como Punto de Control Unificado:**
+    -   Todas las señales son evaluadas por el `Humanizer`, que aplica disciplina y el veredicto de la IA para seleccionar las mejores oportunidades.
+
+### Flujo de Datos de Doble Vía (Actualizado)
 
 ```mermaid
 graph TD
     subgraph Captura y Construcción
-        A[WebSocket Broker] -->|Pip con Timestamp| B(TCPConnector)
+        A[Harvester (Python)] -->|Pips/Velas Históricas| B(TCPConnector)
         B --> C{pip-worker}
         C --> D[CandleBuilder]
     end
 
-    subgraph Flujo Estratégico (Velas Cerradas)
-        D --o|1. candleClosed| E(analysis-worker)
+    subgraph Flujo de Análisis
+        D --o|Vela Cerrada| E(analysis-worker)
+        D --o|Vela Viva| E
         E --> F[ChannelManager]
         F --> G[ChannelWorker]
-        G --> H((IndicatorEngine - Guarda Estado))
-        H --> I{Señal Estratégica}
+        G --> H((IndicatorEngine))
+        H --> I{Señal de Trading}
     end
 
-    subgraph Flujo Táctico (Velas Vivas)
-        D --o|2. candleUpdated| J(analysis-worker)
-        J --> K[ChannelManager]
-        K --> L[ChannelWorker]
-        L --> M((IndicatorEngine - Análisis Hipotético))
-        M --> N{Señal Táctica}
+    subgraph Decisión y Ejecución
+        I --> J(Humanizer)
+        J --> K[LearningManager (Consulta IA)]
+        K --> J
+        J --> L[Operator]
+        L --> M[QXWebSocketTrader (Envía Orden)]
     end
 
-    subgraph Decisión Final
-        I --> O(Humanizer)
-        N --> O
-        O --> P[Operator]
-        P --> Q[Ejecución]
+    subgraph Aprendizaje y Retroalimentación
+        M --> N[TradeResultManager (Rastrea Resultados)]
+        N --> O[Humanizer (Procesa Resultado)]
+        N --> P[LearningManager (Guarda Datos para Entrenamiento)]
+        P --o Q[learning_data.jsonl]
+    end
+
+    subgraph Re-entrenamiento
+        Q --> R[train_model.py]
+        R --> S[model.onnx]
+        S --> K
     end
 ```
 
@@ -58,13 +69,15 @@ graph TD
 ```
 /bot-fantasma
 ├── /config/              # Configuración centralizada
-├── /connectors/          # Conectores (TCP, Telegram)
+├── /connectors/          # Conectores (TCP, Telegram, Broker)
 ├── /logic/               # Lógica de negocio y workers (pip-worker, analysis-worker)
-├── /modules/             # Componentes principales (ChannelManager, IndicatorEngine, Operator)
-├── /utils/               # Utilidades (Logger, StateManager, TimeSyncManager)
+├── /model/               # Modelos de Machine Learning (model.onnx)
+├── /modules/             # Componentes principales (ChannelManager, IndicatorEngine, Humanizer, LearningManager, Operator, TradeResultManager)
+├── /utils/               # Utilidades (Logger, StateManager, TimeSyncManager, timeUtils)
 ├── app.js                # Punto de entrada principal de la aplicación
 ├── harvester.py          # Script de Python que captura los datos del bróker
 ├── package.json          # Dependencias del proyecto
+├── learning_data.jsonl   # Datos de entrenamiento para el modelo de IA
 └── ...
 ```
 

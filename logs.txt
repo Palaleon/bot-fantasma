@@ -1,0 +1,30 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 435.7/435.7 kB 3.0 MB/s eta 0:00:00
+  Downloading flax-0.10.2-py3-none-any.whl (424 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 424.2/424.2 kB 3.0 MB/s eta 0:00:00
+  Downloading flax-0.10.1-py3-none-any.whl (419 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 419.3/419.3 kB 2.9 MB/s eta 0:00:00
+  Downloading flax-0.10.0-py3-none-any.whl (420 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 420.2/420.2 kB 2.9 MB/s eta 0:00:00
+INFO: pip is looking at multiple versions of flax to determine which version is compatible with other requirements. This could take a while.
+  Downloading flax-0.9.0-py3-none-any.whl (780 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 780.7/780.7 kB 2.9 MB/s eta 0:00:00
+  Downloading flax-0.8.5-py3-none-any.whl (731 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 731.3/731.3 kB 2.9 MB/s eta 0:00:00
+  Downloading flax-0.8.4-py3-none-any.whl (698 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 698.6/698.6 kB 2.9 MB/s eta 0:00:00
+  Downloading flax-0.8.3-py3-none-any.whl (685 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 685.9/685.9 kB 2.7 MB/s eta 0:00:00
+  Downloading flax-0.8.2-py3-none-any.whl (686 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 686.8/686.8 kB 2.9 MB/s eta 0:00:00
+INFO: This is taking longer than usual. You might need to provide the dependency resolver with stricter constraints to reduce runtime. See https://pip.pypa.io/warning
+s/backtracking for guidance. If you want to abort this run, press Ctrl + C.
+  Downloading flax-0.8.1-py3-none-any.whl (677 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 677.6/677.6 kB 2.9 MB/s eta 0:00:00
+  Downloading flax-0.8.0-py3-none-any.whl (674 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 674.5/674.5 kB 3.0 MB/s eta 0:00:00
+  Downloading flax-0.7.5-py3-none-any.whl (244 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 244.4/244.4 kB 3.0 MB/s eta 0:00:00
+  Downloading flax-0.7.4-py3-none-any.whl (233 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 233.5/233.5 kB 2.9 MB/s eta 0:00:00
+  Downloading flax-0.7.2-py3-none-any.whl (226 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 226.6/226.6 kB 2.8 MB/s eta 0:00:00

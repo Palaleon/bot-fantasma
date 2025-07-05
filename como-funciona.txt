@@ -1,39 +1,55 @@
-# Análisis Funcional y Arquitectónico del Bot Fantasma v15.0 (El Intérprete del Flujo)
+# Análisis Funcional y Arquitectónico del Bot Fantasma v16.0 (El Auditor)
 
 ## Introducción
 
-El Bot Fantasma v15.0 representa un salto evolutivo en la capacidad de análisis del bot. Manteniendo la robusta arquitectura de su predecesor, esta versión introduce una **capacidad de análisis en tiempo real (intra-vela)**, permitiendo al bot "sentir" y reaccionar al flujo de precios a medida que se forma cada vela, en lugar de esperar a su cierre.
+El Bot Fantasma v16.0 es la versión más robusta y fiable hasta la fecha. Mantiene la potente arquitectura de doble flujo de su predecesor, pero introduce un **sistema de Inteligencia Artificial completamente auditado y corregido**, garantizando que el aprendizaje y la toma de decisiones sean coherentes, precisos y matemáticamente sólidos.
 
 ## 1. Arquitectura de Doble Flujo: Estratégico y Táctico
 
-La principal innovación de la v15.0 es la implementación de un sistema de análisis de doble flujo que opera en paralelo:
+La arquitectura de análisis de doble flujo se mantiene como el núcleo del bot:
 
 **a) Flujo Estratégico (Basado en Velas Cerradas):**
-*   **Sin cambios:** Este es el flujo de trabajo original y probado. El `pip-worker` construye las velas y, una vez que una vela se cierra oficialmente, la envía al `analysis-worker`.
-*   **Análisis de Confirmación:** El `IndicatorEngine` utiliza estas velas cerradas para actualizar su estado histórico, recalibrar la efectividad de las estrategias y generar señales de alta fiabilidad basadas en datos confirmados.
-*   **Propósito:** Este flujo garantiza la estabilidad, la visión a largo plazo y la integridad de los datos históricos.
+*   El `pip-worker` construye las velas y, una vez cerradas, las envía al `analysis-worker`.
+*   El `IndicatorEngine` utiliza estas velas confirmadas para generar señales de alta fiabilidad.
+*   **Propósito:** Estabilidad, visión a largo plazo y análisis basado en datos confirmados.
 
-**b) NUEVO: Flujo Táctico (Basado en Velas Vivas):**
-*   **El Problema:** Anteriormente, el bot era "ciego" entre el cierre de una vela y la siguiente, perdiendo oportunidades valiosas que ocurrían durante la formación de la vela.
-*   **La Solución:**
-    1.  **Emisión en Tiempo Real:** El `CandleBuilder` ahora emite un evento `candleUpdated` con cada pip que recibe. Este evento contiene una "vela viva", una instantánea de la vela actual en formación.
-    2.  **Ruta de Análisis Paralela:** Esta "vela viva" viaja por una nueva ruta de mensajería (`liveCandleUpdate` -> `liveCandle`) hasta el `analysis-worker`.
-    3.  **Análisis Hipotético y Seguro:** El `IndicatorEngine` posee un nuevo método, `getIndicatorsForLiveCandle`. Este método realiza un análisis "hipotético": calcula los indicadores usando la vela viva **sin guardarla en el historial permanente**. Esto permite al bot ver el estado del mercado en tiempo real sin corromper sus datos históricos.
-    4.  **Estrategia Intra-Vela:** El `ChannelWorker` utiliza estos indicadores en vivo para ejecutar una nueva lógica de decisión (`evaluateLiveStrategy`), diseñada para identificar oportunidades de alta frecuencia como pullbacks o rupturas incipientes.
+**b) Flujo Táctico (Basado en Velas Vivas):**
+*   El `CandleBuilder` emite una "vela viva" con cada pip recibido.
+*   El `IndicatorEngine` realiza un **análisis hipotético** sobre esta vela viva sin guardarla en el historial, permitiendo al bot reaccionar al mercado en tiempo real.
+*   **Propósito:** Sensibilidad, agilidad y capacidad de actuar sobre patrones de corta duración.
 
-## 2. Flujo de Decisión Unificado
+## 2. Ciclo de Vida de Datos y Decisión Potenciada por IA (Auditado)
 
-Aunque ahora existen dos fuentes de señales (estratégicas y tácticas), ambas convergen en un único punto de control:
+El flujo de decisión ha sido revisado para garantizar la máxima integridad de los datos y la correcta aplicación de la IA.
 
-*   **El `Humanizer` como Guardián:** Todas las señales, sin importar su origen, son enviadas al `Humanizer`. Su `opportunityBuffer` se vuelve más crucial que nunca, actuando como un filtro que evalúa todas las oportunidades (tanto de velas cerradas como vivas) y selecciona solo la mejor y más disciplinada para ser ejecutada por el `Operator`.
+*   **Paso 1: Creación de la Señal y el `marketSnapshot`**
+    *   El `ChannelWorker` genera una señal de trading. A esta señal se le adjunta una "fotografía" completa del estado de todos los indicadores en ese preciso instante: el `marketSnapshot`.
 
-## 3. Ventajas Clave de la v15.0
+*   **Paso 2: Consulta a la IA y el Veredicto del `Humanizer`**
+    *   La señal, con su `marketSnapshot` intacto, llega al `Humanizer`.
+    *   El `Humanizer` consulta al `LearningManager`, pasándole el `marketSnapshot`.
+    *   **LÓGICA DE IA CORREGIDA:**
+        1.  El `LearningManager` envía el `marketSnapshot` (previamente vectorizado de forma segura) al modelo ONNX.
+        2.  El modelo devuelve un **"logit"** (un valor numérico bruto).
+        3.  El `LearningManager` aplica la **función sigmoide** (`1 / (1 + e^-logit)`) para convertir este logit en una probabilidad de confianza (un número entre 0 y 1).
+        4.  Si la decisión de la IA contradice la señal original, el trade se aborta. Si coinciden, la confianza se promedia.
 
-*   **Sensibilidad al Mercado:** El bot ya no espera. Siente el pulso del mercado tick a tick, permitiéndole medir la volatilidad y la dirección en tiempo real.
-*   **Capacidad Táctica:** Puede identificar y actuar sobre patrones de corta duración, como pullbacks, que eran invisibles para la versión anterior.
-*   **Decisiones Más Rápidas:** Al no tener que esperar el cierre de una vela, el bot puede anticiparse a los movimientos, entrando en operaciones en el momento más oportuno.
-*   **Seguridad y Estabilidad:** La arquitectura de doble flujo garantiza que la nueva capacidad táctica no interfiera con la robusta y probada lógica estratégica, manteniendo la integridad de los datos y la estabilidad del sistema.
+*   **Paso 3: Ejecución y Registro para Aprendizaje**
+    *   Si la señal es aprobada por el `Humanizer`, se envía al `Operator`.
+    *   El `Operator` ejecuta la operación y registra el trade pendiente en el `TradeResultManager`, adjuntando la **señal original completa**.
+    *   Cuando el resultado de la operación llega, el `TradeResultManager` lo asocia con la señal original.
+
+*   **Paso 4: Almacenamiento para Re-entrenamiento**
+    *   El `TradeResultManager` envía el resultado (`isWin`) y la **señal original** al `LearningManager`.
+    *   El `LearningManager` extrae el `marketSnapshot` original y lo guarda en `learning_data.jsonl` junto con el resultado.
+
+## 3. Ventajas Clave de la v16.0
+
+*   **Coherencia Absoluta:** El `marketSnapshot` que se usa para la predicción es **exactamente el mismo** que se guarda para el entrenamiento, eliminando el "desfase de entrenamiento-servicio".
+*   **Aprendizaje Eficaz:** El modelo de IA ahora se entrena de forma equilibrada y matemáticamente correcta, permitiéndole aprender patrones complejos de victorias y derrotas sin sesgos.
+*   **Predicciones Fiables:** La interpretación de la salida del modelo en producción es ahora correcta, asegurando que las decisiones basadas en la confianza de la IA son fiables.
+*   **Arquitectura Robusta:** Se mantiene la agilidad del doble flujo, ahora potenciada por una capa de inteligencia artificial auditada y de alto rendimiento.
 
 ## 4. Conclusión
 
-El Bot Fantasma v15.0 es una máquina de trading más completa. Combina la paciencia y la sabiduría del análisis estratégico a largo plazo con la agilidad y la velocidad de la intuición táctica en tiempo real. Es un sistema que no solo ve el mercado, sino que lo siente.
+El Bot Fantasma v16.0 es una máquina de trading que no solo ve y siente el mercado, sino que **aprende de él de la manera correcta**. La auditoría y corrección de su sistema de IA sientan las bases para una mejora continua y un rendimiento cada vez más preciso y adaptativo.

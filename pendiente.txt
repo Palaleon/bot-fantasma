@@ -1,25 +1,19 @@
 # Plan de Mejora de Precisión del Bot de Trading
 
-## Objetivo del Jefe:
 Antes que nada para que comprendas la arquitectura del bot analiza como-funciona.txt
 luego busca la solucion sin romper la arquitectura del siguiente problema:
 
+## Objetivo del Jefe:
+Este documento detalla el estado actual del desarrollo del bot, enfocándose en la implementación de capacidades de aprendizaje automático y análisis post-mortem.
 
-Despues de saber quién es el Humanizer, verifica por no tiene conciencia de el dinero que tiene. 
 
-Ejemplo se podría enviar un mensaje al broker:
+## ⚠️ Tareas Pendientes (Próximas Fases)
+NINGUNA ACTUALMENTE
 
-por el metodo de emitir
-donde
-42["balance/list"]
-
-repuesta del broker:
-'Mensaje Binario'
-'caracterbinario'{"liveBalance":0.15,"demoBalance":10274.95,"tournamentsBalances":{"430":0.1,"436":0.03,"440":0,"562":0,"568":0.78,"571":0,"574":0,"577":0.14,"580":0.28,"586":0.02,"589":0.67,"592":0,"595":0.55,"598":0.91,"601":0.8,"605":0.18,"610":100.6,"617":85.02,"626":100,"632":12.2,"657":100,"672":100,"703":0,"729":115.68,"738":100},"dayLimit":0,"dayBalance":-200.97}
-
-además el bot no sabe si está en estado real o demo. ya que en varios datos de mensajes de comunicación con el broker se usa el dato de 'isDemo: 1' y esto aun no está configurable en variable dentro de .env
-
-REQUISITOS:
-JAMAS SUPONGAS, BASATE EN CODE REAL Y ACTUAL.
-MANTENTE SIEMPRE CON LA MENTE ABIERTA A DETALLES PARA NO PASARLOS POR ALTO.
-
+## REQUISITOS:
+-   **JAMAS SUPONGAS, BASATE EN CODE REAL Y ACTUAL y por cada analisis nuevo que el jefe te pida, analiza el code actual, no el de tu mente.**
+-   **MANTENTE SIEMPRE CON LA MENTE ABIERTA A DETALLES PARA NO PASARLOS POR ALTO.**
+-   **RIGUROSIDAD EN LA VERIFICACIÓN DE DEPENDENCIAS:** Asegurar que todas las dependencias del proyecto estén correctamente instaladas y funcionales antes de intentar ejecutar la aplicación o validar la funcionalidad.
+-   **COMUNICACIÓN CLARA DE BLOQUEOS:** Reportar inmediatamente cualquier problema que impida el progreso, especialmente aquellos que requieran una acción externa o manual por parte del usuario.
+-   **ENFOQUE EN LA FUNCIONALIDAD COMPLETA:** Priorizar las tareas que lleven el sistema a un estado completamente funcional, incluso si esto implica abordar primero problemas de infraestructura o entorno.(pidiendo autorizacion de los pasos al jefe)
+-   **ANTICIPACIÓN DE REQUISITOS DE ENTORNO:** Identificar y comunicar proactivamente cualquier requisito específico del entorno (software, herramientas de compilación, etc.) necesario para que el proyecto funcione correctamente.

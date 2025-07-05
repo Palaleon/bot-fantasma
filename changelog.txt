@@ -1,3 +1,26 @@
+v16.0: El Auditor - 05 de julio de 2025
+
+**Auditoría y Corrección Integral del Sistema de Machine Learning:**
+Se ha realizado una auditoría exhaustiva de todo el ciclo de vida de los datos de IA, desde su captura hasta su uso en el entrenamiento, resultando en correcciones críticas que alinean perfectamente el entorno de producción (JavaScript) con el de entrenamiento (Python).
+
+- **CORREGIDO - Desfase Crítico de Entrenamiento-Servicio (Train-Serve Skew):**
+  - **Causa Raíz:** La función de vectorización de datos en `LearningManager.js` no manejaba los datos faltantes de la misma manera que `train_model.py`, introduciendo `NaN`s y datos corruptos en producción que no existían en el entrenamiento.
+  - **Solución:** Se ha refactorizado `_normalizeAndVectorize` en `LearningManager.js` para ser una réplica exacta de la lógica de Python, añadiendo valores por defecto seguros y garantizando una consistencia 1:1 entre ambos entornos.
+
+- **CORREGIDO - Error Lógico en la Función de Pérdida del Entrenamiento:**
+  - **Causa Raíz:** En `train_model.py`, la función de pérdida (`criterion`) que debía manejar el desequilibrio de clases se sobrescribía en cada iteración del bucle de entrenamiento con una versión que no utilizaba los pesos de clase calculados, haciendo el entrenamiento ineficaz.
+  - **Solución:** Se ha eliminado la re-declaración de `criterion` dentro del bucle, asegurando que la función de pérdida con los pesos correctos se utilice durante todo el proceso de entrenamiento.
+
+- **CORREGIDO - Incompatibilidad entre Arquitectura de Modelo y Función de Pérdida:**
+  - **Causa Raíz:** El modelo en `train_model.py` tenía una capa `Sigmoid` final, pero la función de pérdida `BCEWithLogitsLoss` (necesaria para el manejo de pesos) espera "logits" brutos. Esto causaba un cálculo de error incorrecto.
+  - **Solución:**
+    1. Se ha eliminado la capa `nn.Sigmoid()` de la arquitectura del modelo en `train_model.py`.
+    2. Se ha modificado la función `predict` en `LearningManager.js` para aplicar manualmente la función sigmoide al logit recibido del modelo, asegurando que la interpretación de la confianza sea matemáticamente correcta.
+
+**Resultado:** El sistema de IA es ahora robusto, coherente y fiable. El modelo se entrena con datos limpios y representativos, y las predicciones en producción se interpretan correctamente, maximizando la efectividad de las decisiones potenciadas por IA.
+
+---
+
 HISTORIAL DE CAMBIOS - BOT FANTASMA
 
 v14.1: El Sincronizador Preciso - 02 de julio de 2025

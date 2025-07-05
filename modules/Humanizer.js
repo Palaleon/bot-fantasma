@@ -4,26 +4,39 @@ import logger from '../utils/logger.js';
 import config from '../config/index.js';
 import { saveState, loadState } from '../utils/StateManager.js';
 
-function gaussianRandom(mean, stdDev) {
-  let u = 0, v = 0;
-  while (u === 0) u = Math.random();
-  while (v === 0) v = Math.random();
-  const num = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
-  return mean + num * stdDev;
-}
+// ELIMINADO: La función gaussianRandom ya no es necesaria.
 
 class Humanizer extends EventEmitter {
-  constructor(telegramConnector) {
+constructor(telegramConnector, accountMode, learningManager) {
     super();
+    this.telegramConnector = telegramConnector;
+    this.learningManager = learningManager;
+    this.accountMode = accountMode || 'demo';
+    this.liveBalance = 0;
+    this.demoBalance = 0;
+
     this.state = loadState();
     this.state.persona = this.state.persona || { state: 'CALM', consecutiveWins: 0, consecutiveLosses: 0 };
     this.state.assetBehavior = this.state.assetBehavior || {};
+    this.state.tradeHistory = this.state.tradeHistory || []; 
     this.state.lastSignalPattern = this.state.lastSignalPattern || '';
-    this.opportunityBuffer = [];
-    this.isDeciding = false;
-    this.decisionWindowMs = 2000;
-    this.telegramConnector = telegramConnector;
-    logger.info('Humanizer v8.1 (Psicologia Rentable) inicializado');
+    
+    // ELIMINADO: El búfer y los estados de decisión ya no son necesarios.
+    // this.opportunityBuffer = [];
+    // this.isDeciding = false;
+    // this.decisionWindowMs = 2000;
+
+    logger.info(`Humanizer v9.0 (Ejecución Rápida) inicializado en modo [${this.accountMode.toUpperCase()}]`);
+  }
+
+  updateBalances(balanceData) {
+    this.liveBalance = balanceData.liveBalance || this.liveBalance;
+    this.demoBalance = balanceData.demoBalance || this.demoBalance;
+    logger.warn(`HUMANIZER: Conciencia actualizada. Modo: [${this.accountMode.toUpperCase()}]. Balance en uso: ${this.getCurrentBalance().toFixed(2)}`);
+  }
+
+  getCurrentBalance() {
+    return this.accountMode === 'live' ? this.liveBalance : this.demoBalance;
   }
 
   processTradeResult(tradeData) {
@@ -58,38 +71,50 @@ class Humanizer extends EventEmitter {
     logger.warn(`HUMANIZER: Nuevo estado de personalidad -> ${this.state.persona.state}`);
   }
 
+  // CAMBIO RADICAL: El análisis ahora es inmediato.
   analyzeSignal(signal) {
-    this.opportunityBuffer.push(signal);
-    if (!this.isDeciding) {
-      this.isDeciding = true;
-      setTimeout(() => this._makeFocusedDecision(), this.decisionWindowMs);
-    }
+    // Ya no hay búfer ni espera. Se llama a la decisión directamente.
+    this._makeFocusedDecision(signal);
   }
 
-  async _makeFocusedDecision() {
-    if (this.opportunityBuffer.length === 0) {
-      this.isDeciding = false;
-      return;
+  async _makeFocusedDecision(signal) {
+    // --- INICIO DE LA CONSULTA A LA IA ---
+    let finalConfidence = signal.confidence;
+
+    if (this.learningManager && this.learningManager.isReady()) {
+        const mlOpinion = await this.learningManager.predict(signal.marketSnapshot);
+
+        if (mlOpinion) {
+            logger.info(`HUMANIZER: Opinión de la IA recibida -> Decisión: ${mlOpinion.decision.toUpperCase()}, Confianza: ${(mlOpinion.confidence * 100).toFixed(1)}%`);
+
+            if (mlOpinion.decision !== signal.decision) {
+                logger.warn(`HUMANIZER: ¡Conflicto de opinión! Señal: ${signal.decision.toUpperCase()}, IA: ${mlOpinion.decision.toUpperCase()}. Abortando trade.`);
+                finalConfidence = 0;
+            } else {
+                finalConfidence = (finalConfidence + mlOpinion.confidence) / 2;
+            }
+        }
+    } else {
+        logger.info('HUMANIZER: Modelo de IA no está listo, se procede con la lógica de confianza estándar.');
     }
+    // --- FIN DE LA CONSULTA A LA IA ---
 
-    const bestOpportunity = this.opportunityBuffer.reduce((a, b) => a.confidence > b.confidence ? a : b);
-    this.opportunityBuffer = [];
-    this.isDeciding = false;
+    const reviewedSignal = { ...signal, confidence: finalConfidence };
 
-    if (this._isTradeApprovedByDiscipline(bestOpportunity)) {
-        const executionParams = this._generateExecutionParams(bestOpportunity);
-        
-        // Añadimos el estado de la persona para que el Operador lo use en la notificación.
+    if (this._isTradeApprovedByDiscipline(reviewedSignal)) {
+        const executionParams = this._generateExecutionParams(reviewedSignal);
+
         const finalSignal = { 
-            ...bestOpportunity, 
+            ...reviewedSignal, 
             executionParams, 
             timestamp: Date.now(),
-            personaState: this.state.persona.state // <-- DATO CLAVE PARA EL OPERADOR
+            personaState: this.state.persona.state,
+            accountMode: this.accountMode
         };
-        
+
         this.logApprovedTrade(finalSignal);
         this.emit('decisionFinal', { approved: true, signal: finalSignal });
-        
+
         this.state.tradeHistory.push(finalSignal);
         saveState(this.state);
     }
@@ -123,6 +148,7 @@ class Humanizer extends EventEmitter {
     const { tradeHistory } = this.state;
     if (tradeHistory.length > 0) {
       if (Date.now() - tradeHistory[tradeHistory.length - 1].timestamp < config.humanizer.minTradeIntervalMs) {
+        logger.warn(`HUMANIZER: Trade rechazado. Enfriamiento de ${config.humanizer.minTradeIntervalMs / 1000}s activo.`);
         return false;
       }
     }
@@ -131,42 +157,48 @@ class Humanizer extends EventEmitter {
   }
 
   _generateExecutionParams(signal) {
+    const balance = this.getCurrentBalance();
+    const { minInvestment, maxInvestment } = config.trading;
+
+    if (balance <= 0) {
+        logger.warn(`HUMANIZER: Balance es cero o inválido. Usando inversión mínima de seguridad de $${minInvestment}.`);
+        // CAMBIO: Delay se establece en 0.
+        return { investment: minInvestment, delayMs: 0, expiration: 5 };
+    }
+
+    const RISK_PERCENTAGE = config.trading.riskPerTrade || 0.01; 
+    let baseInvestment = balance * RISK_PERCENTAGE;
+
     let investmentMultiplier = 1.0;
     if (this.state.persona.state === 'FOCUSED') investmentMultiplier = 1.15;
     if (this.state.persona.state === 'CAUTIOUS') investmentMultiplier = 0.80;
 
-    let expiration = 5; // Valor por defecto
+    let calculatedInvestment = baseInvestment * investmentMultiplier;
+
+    const finalInvestment = Math.max(minInvestment, Math.min(maxInvestment, calculatedInvestment));
+    const formattedInvestment = parseFloat(finalInvestment.toFixed(2));
+
+    logger.info(`HUMANIZER (Inversión): Balance: $${balance.toFixed(2)}, Riesgo: ${RISK_PERCENTAGE*100}%, Calculado: $${calculatedInvestment.toFixed(2)}, Final: $${formattedInvestment}`);
+
+    let expiration = 5;
     if (signal.triggeredBy.startsWith('live_')) {
-        // Para señales en vivo, extraemos el número después de 'live_'
-        const timePart = signal.triggeredBy.split('_')[1]; // '1m'
-        expiration = parseInt(timePart, 10); // 1
+        const timePart = signal.triggeredBy.split('_')[1];
+        expiration = parseInt(timePart, 10);
     } else {
-        // Para señales normales, usamos la lógica anterior
         expiration = parseInt(signal.triggeredBy, 10);
     }
-    // Si algo falla, nos aseguramos de tener un valor sensato
     if (isNaN(expiration) || expiration <= 0) {
-        expiration = 1; // Para señales en vivo, un defecto de 1 min es más seguro
-    }
-    const { minInvestment, maxInvestment } = config.trading;
-    const investmentRatio = (signal.confidence - 0.5) / 0.5;
-    const dynamicBaseInvestment = minInvestment + (investmentRatio * (maxInvestment - minInvestment));
-    const finalInvestment = Math.max(minInvestment, Math.min(maxInvestment, parseFloat((dynamicBaseInvestment * investmentMultiplier).toFixed(2))));
-    
-    let delayMs = 0; // Por defecto, no hay retardo para las operaciones optimizadas.
-
-    // Solo aplicamos el retardo "humano" a las señales de velas cerradas, no a las de tiempo real.
-    if (!signal.triggeredBy.startsWith('live_')) {
-        const { meanMs, stdDevMs } = config.humanizer.delay;
-        delayMs = Math.max(500, gaussianRandom(meanMs, stdDevMs));
+        expiration = 1;
     }
 
-    return { investment: finalInvestment, delayMs: Math.round(delayMs), expiration };
+    // CAMBIO RADICAL: El delay artificial se elimina por completo.
+    const delayMs = 0;
+
+    return { investment: formattedInvestment, delayMs, expiration };
   }
 
   logApprovedTrade(signal) {
     const { asset, decision, confidence, executionParams } = signal;
-    // Ya no tenemos requestId aquí, lo cual es correcto.
     logger.warn(`HUMANIZER: !ORDEN APROBADA! | ${asset} | ${decision.toUpperCase()} | Conf: ${confidence.toFixed(2)} | Invest: $${executionParams.investment}`, { asset: asset });
   }
 }

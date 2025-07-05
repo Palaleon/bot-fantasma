@@ -12,6 +12,7 @@ import { logEmitter } from './utils/logger.js';
 import Humanizer from './modules/Humanizer.js';
 import QXWebSocketTrader from './modules/QXWebSocketTrader.js';
 import TradeResultManager from './modules/TradeResultManager.js';
+import LearningManager from './modules/LearningManager.js';
 
 puppeteer.use(StealthPlugin());
 
@@ -28,6 +29,7 @@ class TradingBotFantasmaV4 {
     this.analysisWorker = null;
     this.socketExporter = null;
 	this.tradeResultManager = null;
+this.learningManager = null;
   }
 
   async initializeBrowser() {
@@ -129,8 +131,9 @@ class TradingBotFantasmaV4 {
       // 1. Creamos todos los componentes, incluyendo nuestro nuevo "cerebro de evaluacion de resultados de trades"
       this.telegramConnector = new TelegramConnector();
       this.tradeResultManager = new TradeResultManager(); // ¡Aquí nace!
+	  this.learningManager = new LearningManager(); // ¡Aquí nace el cerebro de aprendizaje!
       this.operator = new Operator(this.webSocketTrader, this.telegramConnector, null, this.tradeResultManager); // Le pasamos el cerebro al Operator
-      this.humanizer = new Humanizer(this.telegramConnector);
+      this.humanizer = new Humanizer(this.telegramConnector, config.trading.accountMode, this.learningManager);
       this.pipWorker = new Worker('./logic/pip-worker.js');
       this.analysisWorker = new Worker('./logic/analysis-worker.js');
       this.socketExporter = new SocketExporter(config.socketExportPort);
@@ -187,21 +190,32 @@ class TradingBotFantasmaV4 {
         this.tradeResultManager.processIndividualResult(deal);
       });
 
+  // ✅ NUEVO: Conectamos el oído del WebSocketTrader directamente a la conciencia del Humanizer
+  this.webSocketTrader.on('balanceUpdated', (data) => {
+      this.humanizer.updateBalances(data);
+  });
+  
       // 3. La conexión de aprendizaje ahora escucha al "cerebro"
       // El evento 'tradeCompleted' ahora lo emite el Manager, no el Operator.
       this.tradeResultManager.on('tradeCompleted', (tradeData) => {
-        // Notificamos al Humanizer para que aprenda (esto no cambia)
-        this.humanizer.processTradeResult(tradeData);
-        
-        logger.info(`APP: Trade completado. Resultado: ${tradeData.isWin ? 'GANADA' : 'PERDIDA'}`);
-        this.socketExporter.broadcast({ type: 'tradeResult', data: tradeData });
+    // --- INICIO DE LA LÓGICA DE APRENDIZAJE ---
+    // Si la señal tiene el snapshot, le ordenamos al cerebro que guarde los datos.
+    if (tradeData.signal && tradeData.signal.marketSnapshot) {
+        this.learningManager.captureTrainingData(tradeData, tradeData.signal.marketSnapshot);
+    }
+    // --- FIN DE LA LÓGICA DE APRENDIZAJE ---
 
-        // Recuperamos la notificación de resultado de Telegram que quitamos del Operator
-        const header = tradeData.isWin ? '🎉 *¡RESULTADO EXITOSO!* 🎉' : '💔 *RESULTADO REGISTRADO* 💔';
-        const resultText = tradeData.isWin ? '*VICTORIA* ✅' : '*PÉRDIDA, SEGUIMOS ANALIZANDO CHICOS - BOT FANTASMA* ❌';
-        const message = `\n${header}\n\n*ID de Orden*: \`${tradeData.signal.requestId}\`\n*Resultado*: ${resultText}\n    `;
-        this.telegramConnector.sendMessage(message, { parse_mode: 'Markdown' });
-      });
+    // El resto de la lógica sigue igual.
+    this.humanizer.processTradeResult(tradeData);
+
+    logger.info(`APP: Trade completado. Resultado: ${tradeData.isWin ? 'GANADA' : 'PERDIDA'}`);
+    this.socketExporter.broadcast({ type: 'tradeResult', data: tradeData });
+
+    const header = tradeData.isWin ? '🎉 *¡RESULTADO EXITOSO!* 🎉' : '💔 *RESULTADO REGISTRADO* 💔';
+    const resultText = tradeData.isWin ? '*VICTORIA* ✅' : '*PÉRDIDA, SEGUIMOS ANALIZANDO CHICOS - BOT FANTASMA* ❌';
+    const message = `\n${header}\n\n*ID de Orden*: \`${tradeData.signal.requestId}\`\n*Resultado*: ${resultText}\n    `;
+    this.telegramConnector.sendMessage(message, { parse_mode: 'Markdown' });
+  });
 
       logEmitter.on('log', (logData) => {
         if (['warn', 'error'].includes(logData.level)) {
@@ -210,6 +224,7 @@ class TradingBotFantasmaV4 {
       });
 
       this.socketExporter.start();
+	  await this.webSocketTrader.requestBalance();
       this.tcpConnector.connect();
 
       logger.info('✅ Arquitectura híbrida iniciada con éxito.');

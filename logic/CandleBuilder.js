@@ -1,13 +1,16 @@
 import { EventEmitter } from 'events';
+// Importamos nuestra nueva oficina de DNI para velas.
+import { generateCandleId } from '../utils/timeUtils.js';
 
 class CandleBuilder extends EventEmitter {
-    constructor(periodInSeconds, timeframe, getTime = null) {
+    constructor(periodInSeconds, timeframe, asset, getTime = null) {
         super();
-        if (!timeframe) {
-            throw new Error("CandleBuilder requiere un 'timeframe' en el constructor.");
+        if (!timeframe || !asset) {
+            throw new Error("CandleBuilder requiere un 'timeframe' y un 'asset' en el constructor.");
         }
         this.period = periodInSeconds;
         this.timeframe = timeframe;
+        this.asset = asset; // Guardamos el activo para generar el ID.
         this.getTime = getTime || (() => Math.floor(Date.now() / 1000));
         this.currentCandle = null;
     }
@@ -36,7 +39,9 @@ class CandleBuilder extends EventEmitter {
             low: price,
             close: price,
             volume: 1,
-            time: time
+            time: time,
+            // ¡AQUÍ ESTÁ LA MAGIA! Le ponemos su DNI a la vela justo al nacer.
+            id: generateCandleId(this.asset, this.timeframe, time * 1000) // time está en segundos, lo pasamos a ms.
         };
     }
 
@@ -47,13 +52,14 @@ class CandleBuilder extends EventEmitter {
         this.currentCandle.close = price;
         this.currentCandle.volume += 1;
 
-        // Emitir la vela actualizada en tiempo real
+        // Emitir la vela actualizada en tiempo real, asegurándonos de que lleva su DNI.
         const liveCandle = { ...this.currentCandle, timeframe: this.timeframe };
         this.emit('candleUpdated', liveCandle);
     }
 
     closeCurrentCandle() {
         if (this.currentCandle) {
+            // La vela final también llevará su DNI, que fue asignado al crearse.
             const finalCandle = { ...this.currentCandle, timeframe: this.timeframe };
             this.emit('candleClosed', finalCandle);
             this.currentCandle = null;
