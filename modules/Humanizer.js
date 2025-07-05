@@ -101,23 +101,35 @@ constructor(telegramConnector, accountMode, learningManager) {
 
     const reviewedSignal = { ...signal, confidence: finalConfidence };
 
-    if (this._isTradeApprovedByDiscipline(reviewedSignal)) {
-        const executionParams = this._generateExecutionParams(reviewedSignal);
+    // Por defecto, la disciplina está activada.
+    // Se desactiva solo si la variable de entorno está explícitamente en 'false'.
+    const disciplineEnabled = process.env.HUMANIZER_DISCIPLINE_ENABLED !== 'false';
 
-        const finalSignal = { 
-            ...reviewedSignal, 
-            executionParams, 
-            timestamp: Date.now(),
-            personaState: this.state.persona.state,
-            accountMode: this.accountMode
-        };
-
-        this.logApprovedTrade(finalSignal);
-        this.emit('decisionFinal', { approved: true, signal: finalSignal });
-
-        this.state.tradeHistory.push(finalSignal);
-        saveState(this.state);
+    if (!disciplineEnabled) {
+        logger.warn('HUMANIZER: La disciplina ha sido desactivada por configuración. Procediendo directamente a la ejecución.');
     }
+
+    if (disciplineEnabled && !this._isTradeApprovedByDiscipline(reviewedSignal)) {
+        // Si la disciplina está activada y no aprueba el trade, se detiene aquí.
+        return; 
+    }
+
+    // Si la disciplina está desactivada, o si está activada y aprueba el trade, continuamos.
+    const executionParams = this._generateExecutionParams(reviewedSignal);
+
+    const finalSignal = { 
+        ...reviewedSignal, 
+        executionParams, 
+        timestamp: Date.now(),
+        personaState: this.state.persona.state,
+        accountMode: this.accountMode
+    };
+
+    this.logApprovedTrade(finalSignal);
+    this.emit('decisionFinal', { approved: true, signal: finalSignal });
+
+    this.state.tradeHistory.push(finalSignal);
+    saveState(this.state);
   }
 
   _isTradeApprovedByDiscipline(signal) {

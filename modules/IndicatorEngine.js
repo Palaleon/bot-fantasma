@@ -248,8 +248,20 @@ class IndicatorEngine {
         
         logger.info(`INDICATOR-ENGINE (${timeframe}): Umbral de recalibración dinámico calculado: ${dynamicThreshold.toFixed(3)} (ATR Normalizado: ${(normalizedAtr * 100).toFixed(2)}%)`);
 
-        // Se usa el umbral dinámico para decidir si recalibrar.
-        if (smaScore < dynamicThreshold && (Date.now() - indicatorSet.lastRecalibrationTime > 3600000)) {
+        // MEJORA DE ADAPTACIÓN: Se calcula un intervalo de recalibración dinámico.
+        // En mercados más volátiles (ATR alto), el bot se recalibrará más a menudo.
+        // En mercados más estables (ATR bajo), esperará más tiempo.
+        const volatilityFactor = 5; // Factor para amplificar el efecto de la volatilidad.
+        const minInterval = 900000; // 15 minutos
+        const maxInterval = 7200000; // 2 horas
+
+        let dynamicInterval = indicatorSet.baseRecalibrationInterval / (1 + normalizedAtr * volatilityFactor);
+        dynamicInterval = Math.max(minInterval, Math.min(dynamicInterval, maxInterval)); // Se asegura que el intervalo esté dentro de los límites.
+
+        logger.info(`INDICATOR-ENGINE (${timeframe}): Intervalo de recalibración dinámico: ${(dynamicInterval / 60000).toFixed(1)} minutos.`);
+
+        // Se usa el umbral y el intervalo dinámicos para decidir si recalibrar.
+        if (smaScore < dynamicThreshold && (Date.now() - indicatorSet.lastRecalibrationTime > dynamicInterval)) {
             this._recalibrateParameters(timeframe);
         }
     }

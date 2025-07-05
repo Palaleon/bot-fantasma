@@ -8,7 +8,8 @@ Este documento detalla el estado actual del desarrollo del bot, enfocándose en 
 
 
 ## ⚠️ Tareas Pendientes (Próximas Fases)
-NINGUNA ACTUALMENTE
+hacerAnaliza que cuellos de botellas pueden estar habiendo en la logica y que no nos demos cuenta, condiciones que hagan que el bot no actue como se esperaria ect. 
+ANALIZA A FONDO LOS ARCHIVOS REALES, y SI ENCUENTRAS UN DETALLE NO TE QUEDES AHI, SIGUE ANALIZANDO Y AL FINAL DA EL TOTAL. JAMAS SUPONGAS.
 
 ## REQUISITOS:
 -   **JAMAS SUPONGAS, BASATE EN CODE REAL Y ACTUAL y por cada analisis nuevo que el jefe te pida, analiza el code actual, no el de tu mente.**
